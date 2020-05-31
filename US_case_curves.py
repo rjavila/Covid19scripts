@@ -65,7 +65,7 @@ def grid_plot(data):
         ax.set_ylim(bottom=0)
         
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-        plt.gcf().autofmt_xdate()
+        plt.gcf().autofmt_xdate(rotation=70)
 
         ax.tick_params('both',labelsize='xx-small')
         ax.text(0.025,0.8,stateslist[i],fontsize='small',transform=ax.transAxes)
