@@ -5,9 +5,8 @@ import time
 
 JHU_URL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series"
 
-def get_data(world=False, usa=False, deaths=False, url=JHU_URL, outdir="data"):
-    assert world==True or usa==True, "Must specify either USA or global numbers"
-    if world is True:
+def download_data(region, deaths=False, url=JHU_URL, outdir="data"):
+    if region in ["world", "global", "latin", "eu_vs_usa"]:
         if deaths is True:
             filename = "time_series_covid19_deaths_global.csv"
         else:
@@ -34,9 +33,8 @@ def get_data(world=False, usa=False, deaths=False, url=JHU_URL, outdir="data"):
 
     return outfilename
 
-def read_data(filename, world=False, usa=False):
-    assert world==True or usa==True, "Must specify either USA or global numbers"
-    if world is True:
+def read_data(filename, region):
+    if region in ["world", "global", "latin", "eu_vs_usa"]:
         a = pd.read_csv(filename)
         b = a.groupby('Country/Region').sum()
         b.drop(columns=['Lat','Long'], inplace=True)
@@ -54,3 +52,7 @@ def read_data(filename, world=False, usa=False):
 
     return data, statepops
 
+def get_data(region):
+    filename = download_data(region)
+    data, statepops = read_data(filename, region)
+    return data, statepops
