@@ -24,6 +24,12 @@ STATES = ['Alabama','Alaska','Arizona','Arkansas','California',
 ALL_COUNTRIES = ['Brazil','Costa Rica','El Salvador','Germany','Iran',
                  'Italy','Korea, South','Mexico','Russia','Spain','Sweden','US']
 
+EU_COUNTRIES = ['Austria','Belgium','Bulgaria','Croatia','Cyprus','Czechia',
+                'Denmark','Estonia','Finland','France','Germany','Greece',
+                'Hungary','Ireland','Italy','Latvia','Lithuania','Luxembourg',
+                'Malta','Netherlands','Poland','Portugal','Romania','Slovakia',
+                'Slovenia','Spain','Sweden']
+
 LATIN_COUNTRIES = ['Mexico','Guatemala','Belize','El Salvador','Honduras',
                    'Nicaragua','Costa Rica','Panama','Colombia','Venezuela',
                    'Ecuador','Peru','Brazil','Bolivia','Paraguay','Uruguay',
@@ -43,7 +49,7 @@ def plot_by_state(state, data):
 
     plt.savefig(f'{state}_new_cases.png', bbox_index='tight')
 
-def grid_plot(data, region, outdir="plots"):
+def grid_plot(data, region, outdir="plots", eu_vs_usa=True):
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
@@ -51,7 +57,7 @@ def grid_plot(data, region, outdir="plots"):
         subplots = (3, 4)
         figsize = (12, 6)
         lw = 1.25
-        labelsize="small"
+        labelsize = "small"
         fontsize = "medium"
         if region in ["world", "global"]:
             statenations = ALL_COUNTRIES
@@ -67,6 +73,15 @@ def grid_plot(data, region, outdir="plots"):
         labelsize = "xx-small"
         fontsize = "small"
         filename = "states_new_cases.pdf"
+    elif region == "eu_vs_usa":
+        data["EU"] = data.loc[:,EU_COUNTRIES].sum(axis=1)
+        subplots = (2, 1)
+        figsize = (6, 6)
+        lw = 1.5
+        labelsize = "small"
+        fontsize = "large"
+        statenations = ["US", "EU"]
+        filename = "EU_vs_USA.pdf"
 
     fig, axes = plt.subplots(subplots[0], subplots[1],
                              figsize=(figsize[0], figsize[1]),
@@ -98,22 +113,7 @@ def grid_plot(data, region, outdir="plots"):
     print(f"Saved {outfilename}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-g", "--global", dest="world", action="store_true", 
-                        default=False,
-                        help="Plot gloabl trends")
-    parser.add_argument("-u", "--usa", action="store_true", default=False,
-                        help="Plot USA trends")
-    parser.add_argument("-l", "--latin", action="store_true", default=False,
-                        help="Plot Latin America trends")
-    
-    args = parser.parse_args()
-    
-    if args.world == args.usa == args.latin == False:
-        regions = ["world", "usa", "latin"]
-    else:
-        regions = [k for k,v in args.__dict__.items() if k == True]
-    
+    regions = ["world", "usa", "latin", "eu_vs_usa"]
     for item in regions:
         data, pops = get_data.get_data(item)
         grid_plot(data, item)
