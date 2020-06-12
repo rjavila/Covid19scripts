@@ -1,10 +1,11 @@
 import pandas as pd
 import wget
 import os
+import time
 
 JHU_URL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series"
 
-def get_data(world=False, usa=False, deaths=False, url=JHU_URL):
+def get_data(world=False, usa=False, deaths=False, url=JHU_URL, outdir="data"):
     assert world==True or usa==True, "Must specify either USA or global numbers"
     if world is True:
         if deaths is True:
@@ -16,11 +17,22 @@ def get_data(world=False, usa=False, deaths=False, url=JHU_URL):
             filename = "time_series_covid19_deaths_US.csv"
         else:
             filename = "time_series_covid19_confirmed_US.csv"
+   
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
     
-    wget.download(os.path.join(url, filename), filename)
-    print(f"\nDownloaded file {filename}")
+    outfilename = os.path.join(outdir, filename)
+    if os.path.exists(outfilename):
+        filetime = os.path.getmtime(outfilename)
+        now = time.time()
+        if now - filetime <= 43200: #43200s = 12 hours
+            print(f"File {outfilename} already up to date")
+            return outfilename
 
-    return filename
+    wget.download(os.path.join(url, filename), outfilename)
+    print(f"\nDownloaded {outfilename}")
+
+    return outfilename
 
 def read_data(filename, world=False, usa=False):
     assert world==True or usa==True, "Must specify either USA or global numbers"
