@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -17,7 +18,10 @@ SUBSET_COUNTIRES = ['China','El Salvador','Iran','Italy','Japan',
                     'Korea, South','Spain','Taiwan*','US']
 N_MIN = 100
 
-def overlaid_plots(region, all_data, pops):
+def overlaid_plots(region, all_data, pops, region_subset=None, outdir="plots"):
+    if region is not None:
+        capita = 100000
+        region_subset = region
     if region == "world":
         capita = 1000000
         region_subset = SUBSET_COUNTRIES
@@ -40,10 +44,10 @@ def overlaid_plots(region, all_data, pops):
             ax.set_ylim(bottom=1)
             ax.semilogy()
             ax.yaxis.set_major_formatter(ScalarFormatter())
-            filename = f"{region}_capita_date_log.png"
+            filename = os.path.join(outdir, f"{region}_capita_date_log.png")
             title = f"Log Number of Cases  Per {capita:,} by Date"
         else:
-            filename = f"{region}_capita_date.png"
+            filename = os.path.join(outdir, f"{region}_capita_date.png")
             title = f"Number of Cases  Per {capita:,} by Date"
         fig.suptitle(title)
         fig.savefig(filename, bbox_inches="tight")
@@ -56,10 +60,10 @@ def overlaid_plots(region, all_data, pops):
         ax.set_xlim(datetime.date(2020, 3, 1), datetime.datetime.now() + datetime.timedelta(days=2))
         if log is True:
             ax.semilogy()
-            filename = f"{region}_date_log.png"
+            filename = os.path.join(outdir, f"{region}_date_log.png")
             title = "Log Number of Cases by Date"
         else:
-            filename = f"{region}_date.png"
+            filename = os.path.join(outdir, f"{region}_date.png")
             title = "Number of Cases by Date"
         fig.suptitle(title)
         fig.savefig(filename, bbox_inches="tight")
@@ -84,13 +88,13 @@ def overlaid_plots(region, all_data, pops):
             ax2.semilogy()
             ax1.yaxis.set_major_formatter(ScalarFormatter())
             ax2.yaxis.set_major_formatter(ScalarFormatter())
-            filename1 = f"{region}_days_log.png"
-            filename2 = f"{region}_capita_days_log.png"
+            filename1 = os.path.join(outdir, f"{region}_days_log.png")
+            filename2 = os.path.join(outdir, f"{region}_capita_days_log.png")
             title1 = "Log Number of Cases Since 100 Infected"
             title2 = f"Log Number of Cases Per {capita:,} Since 100 Infected"
         else:
-            filename1 = f"{region}_days.png"
-            filename2 = f"{region}_capita_days.png"
+            filename1 = os.path.join(outdir, f"{region}_days.png")
+            filename2 = os.path.join(outdir, f"{region}_capita_days.png")
             title1 = "Number of Cases Since 100 Infected"
             title2 = f"Number of Cases Per {capita:,} Since 100 Infected"
         fig1.suptitle(title1)
