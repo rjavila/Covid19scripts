@@ -119,8 +119,7 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True):
     print(f"Saved {outfilename}")
 
 if __name__ == "__main__":
-    regions = ["world"]
-    #regions = ["world", "usa", "latin", "eu_vs_usa"]
+    regions = ["world", "usa", "latin", "eu_vs_usa"]
     for item in regions:
         data, pops = get_data.get_data(item)
         grid_plot(data, item)
