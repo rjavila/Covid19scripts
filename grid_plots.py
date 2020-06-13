@@ -7,7 +7,13 @@ import sys
 import argparse
 import get_data
 
-matplotlib.style.use('dark_background')
+stylesheet = "seaborn-dark"
+#stylesheet = "dark_background"
+matplotlib.style.use(stylesheet)
+if stylesheet == "seaborn-dark":
+    contrast = "orange"
+else:
+    contrast = "gold"
 
 STATES = ['Alabama','Alaska','Arizona','Arkansas','California',
           'Colorado','Connecticut','Delaware','Florida',
@@ -96,7 +102,7 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True):
         ax.plot(dailydata[statenations[i]].rolling(5,
                                               center=True,
                                               min_periods=2).mean(),
-                c='gold', lw=lw)
+                c=contrast, lw=lw)
         ax.set_ylim(bottom=0)
         
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
@@ -113,7 +119,8 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True):
     print(f"Saved {outfilename}")
 
 if __name__ == "__main__":
-    regions = ["world", "usa", "latin", "eu_vs_usa"]
+    regions = ["world"]
+    #regions = ["world", "usa", "latin", "eu_vs_usa"]
     for item in regions:
         data, pops = get_data.get_data(item)
         grid_plot(data, item)
