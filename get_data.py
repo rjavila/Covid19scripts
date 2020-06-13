@@ -27,6 +27,8 @@ def download_data(region, deaths=False, url=JHU_URL, outdir="data"):
         if now - filetime <= 43200: #43200s = 12 hours
             print(f"File {outfilename} already up to date")
             return outfilename
+        else:
+            os.remove(outfilename)
 
     wget.download(os.path.join(url, filename), outfilename)
     print(f"\nDownloaded {outfilename}")
@@ -45,7 +47,8 @@ def read_data(filename, region):
                     'Country_Region','Lat','Long_','Combined_Key'], 
                     inplace=True)
         b = a.groupby('Province_State').sum()
-        statepops = pd.read_csv('nst-est2019-01.csv',index_col='State')
+        statepops0 = pd.read_csv('nst-est2019-01.csv',index_col='State')
+        statepops = statepops0.T
     dt_index = pd.to_datetime(b.columns)
     data = b.T
     data = data.reindex(dt_index)
