@@ -49,13 +49,17 @@ def read_data(filename, region):
         b = a.groupby('Province_State').sum()
         statepops0 = pd.read_csv('nst-est2019-01.csv',index_col='State')
         statepops = statepops0.T
+    try:
+        b.drop(columns="Population", inplace=True)
+    except KeyError:
+        pass
     dt_index = pd.to_datetime(b.columns)
     data = b.T
     data = data.reindex(dt_index)
 
     return data, statepops
 
-def get_data(region):
-    filename = download_data(region)
+def get_data(region, deaths=False):
+    filename = download_data(region, deaths=deaths)
     data, statepops = read_data(filename, region)
     return data, statepops

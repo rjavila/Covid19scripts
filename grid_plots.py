@@ -41,23 +41,14 @@ LATIN_COUNTRIES = ['Mexico','Guatemala','Belize','El Salvador','Honduras',
                    'Ecuador','Peru','Brazil','Bolivia','Paraguay','Uruguay',
                    'Argentina','Chile','Cuba','Dominican Republic']
 
-def plot_by_state(state, data):
-
-    fig = plt.figure(figsize=(6,4))
-
-    plt.bar(data.index, data[state].diff())
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-    plt.gcf().autofmt_xdate(rotation=0, ha='center')
-
-    plt.ylabel('Daily new cases')
-    plt.suptitle(state, fontsize='x-large')
-
-    plt.savefig(f'{state}_new_cases.png', bbox_index='tight')
-
-def grid_plot(data, region, outdir="plots", eu_vs_usa=True):
+def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
     if not os.path.exists(outdir):
         os.mkdir(outdir)
+
+    if deaths is True:
+        lbl = "deaths"
+    else:
+        lbl = "cases"
 
     if region in ["world", "global", "latin"]:
         subplots = (3, 4)
@@ -67,10 +58,10 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True):
         fontsize = "medium"
         if region in ["world", "global"]:
             statenations = ALL_COUNTRIES
-            filename = "global_new_cases.pdf"
+            filename = f"global_new_{lbl}.pdf"
         else:
             statenations = LATIN_COUNTRIES
-            filename = "latin_new_cases.pdf"
+            filename = f"latin_new_{lbl}.pdf"
     elif region == "usa":
         subplots = (10, 5)
         figsize = (10, 12)
@@ -78,7 +69,7 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True):
         lw = 0.75
         labelsize = "xx-small"
         fontsize = "small"
-        filename = "states_new_cases.pdf"
+        filename = f"states_new_{lbl}.pdf"
     elif region == "eu_vs_usa":
         data["EU"] = data.loc[:,EU_COUNTRIES].sum(axis=1)
         subplots = (2, 1)
@@ -87,7 +78,7 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True):
         labelsize = "small"
         fontsize = "large"
         statenations = ["US", "EU"]
-        filename = "EU_vs_USA.pdf"
+        filename = f"EU_vs_USA_{lbl}.pdf"
 
     fig, axes = plt.subplots(subplots[0], subplots[1],
                              figsize=(figsize[0], figsize[1]),
@@ -112,14 +103,20 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True):
         ax.text(0.025, 0.8, statenations[i], fontsize=fontsize, 
                 transform=ax.transAxes)
 
-    plt.suptitle(f'New daily cases\n{dailydata.index[-1]:%B %d, %Y}',
+    plt.suptitle(f'New daily {lbl}\n{dailydata.index[-1]:%B %d, %Y}',
                  fontsize='large')
     outfilename = os.path.join(outdir, filename)
     plt.savefig(outfilename, bbox_inches='tight')
     print(f"Saved {outfilename}")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--deaths", action="store_true",
+                        default=False,
+                        help="Switch to plot deaths instead of cases")
+    args = parser.parse_args()
+    
     regions = ["world", "usa", "latin", "eu_vs_usa"]
     for item in regions:
-        data, pops = get_data.get_data(item)
-        grid_plot(data, item)
+        data, pops = get_data.get_data(item, deaths=args.deaths)
+        grid_plot(data, item, deaths=args.deaths)
