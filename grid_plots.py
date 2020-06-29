@@ -5,15 +5,21 @@ import matplotlib.dates as mdates
 import pandas as pd
 import sys
 import argparse
+import datetime
+
 import get_data
 
 stylesheet = "seaborn-dark"
 #stylesheet = "dark_background"
 matplotlib.style.use(stylesheet)
-if stylesheet == "seaborn-dark":
-    contrast = "orange"
-else:
+if stylesheet == "dark_background":
+    bar_c = "#8dd3c7"
     contrast = "gold"
+    alpha = 1.0
+else:
+    bar_c = "crimson"
+    contrast_c = "crimson"
+    alpha = 0.3
 
 STATES = ['Alabama','Alaska','Arizona','Arkansas','California',
           'Colorado','Connecticut','Delaware','Florida',
@@ -42,6 +48,8 @@ LATIN_COUNTRIES = ['Mexico','Guatemala','Belize','El Salvador','Honduras',
                    'Argentina','Chile','Cuba','Dominican Republic']
 
 def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
+    months = mdates.MonthLocator()
+    
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
@@ -63,8 +71,8 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
             statenations = LATIN_COUNTRIES
             filename = f"latin_new_{lbl}.pdf"
     elif region == "usa":
-        subplots = (10, 5)
-        figsize = (10, 12)
+        subplots = (5, 10)
+        figsize = (20, 9)
         statenations = STATES
         lw = 0.75
         labelsize = "xx-small"
@@ -83,25 +91,35 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
     fig, axes = plt.subplots(subplots[0], subplots[1],
                              figsize=(figsize[0], figsize[1]),
                              sharex=True)
-    plt.subplots_adjust(wspace=0.3)
+    plt.subplots_adjust(wspace=0.35)
+    plt.subplots_adjust(hspace=0.35)
 
     dailydata = data.diff()
 
     for i,ax in enumerate(axes.flatten()):
 
-        ax.bar(dailydata.index, dailydata[statenations[i]])
+        ax.bar(dailydata.index, dailydata[statenations[i]], color=bar_c,
+               alpha=alpha)
         ax.plot(dailydata[statenations[i]].rolling(5,
                                               center=True,
                                               min_periods=2).mean(),
-                c=contrast, lw=lw)
+                                              c=contrast_c, lw=lw)
         ax.set_ylim(bottom=0)
+        total = int(dailydata[statenations[i]].sum())
+        ax.annotate(f"{statenations[i]}", (0.035, 1.05), xycoords="axes fraction", 
+                    size=fontsize)
+        ax.annotate(f"{total:,}", (0.035, .85), 
+                    xycoords = "axes fraction", size=fontsize, style="italic")
+        ax.set_xlim(left=datetime.date(2020, 2, 27))
         
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-        plt.gcf().autofmt_xdate(rotation=70)
+        plt.gcf().autofmt_xdate(rotation=60, ha="center")
 
-        ax.tick_params('both', labelsize=labelsize)
-        ax.text(0.025, 0.8, statenations[i], fontsize=fontsize, 
-                transform=ax.transAxes)
+        ax.tick_params('both', labelsize=labelsize, length=2)
+        ax.get_yaxis().set_major_formatter(
+            matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+        ax.yaxis.set_ticks_position('both')
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(months)
 
     plt.suptitle(f'New daily {lbl}\n{dailydata.index[-1]:%B %d, %Y}',
                  fontsize='large')
@@ -117,6 +135,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     regions = ["world", "usa", "latin", "eu_vs_usa"]
+#    regions = ["usa"]
     for item in regions:
         data, pops = get_data.get_data(item, deaths=args.deaths)
         grid_plot(data, item, deaths=args.deaths)
