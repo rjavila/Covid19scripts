@@ -162,9 +162,20 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--deaths", action="store_true",
                         default=False,
                         help="Switch to plot deaths instead of cases")
+    parser.add_argument('--regions', nargs='+')
     args = parser.parse_args()
     
-    regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_global"]
+    allowed_regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_global"]
+    if args.regions is None:
+        regions = allowed_regions
+    else:
+        regions = []
+        for item in args.regions:
+            if item in allowed_regions:
+                regions.append(item)
+            else:
+                print(f"Region {item} not recognized\nAllowed values: {allowed_regions}")
+
     for item in regions:
         data, pops = get_data.get_data(item, deaths=args.deaths)
         grid_plot(data, item, deaths=args.deaths)
