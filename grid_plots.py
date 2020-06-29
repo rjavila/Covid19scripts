@@ -13,13 +13,13 @@ stylesheet = "seaborn-dark"
 #stylesheet = "dark_background"
 matplotlib.style.use(stylesheet)
 if stylesheet == "dark_background":
-    bar_c = "#8dd3c7"
-    contrast = "gold"
-    alpha = 1.0
+    BAR_C = "#8dd3c7"
+    CONTRAST = "gold"
+    ALPHA = 1.0
 else:
-    bar_c = "crimson"
-    contrast_c = "crimson"
-    alpha = 0.3
+    BAR_C = "crimson"
+    CONTRAST_c = "crimson"
+    ALPHA = 0.3
 
 STATES = ['Alabama','Alaska','Arizona','Arkansas','California',
           'Colorado','Connecticut','Delaware','Florida',
@@ -47,7 +47,17 @@ LATIN_COUNTRIES = ['Mexico','Guatemala','Belize','El Salvador','Honduras',
                    'Ecuador','Peru','Brazil','Bolivia','Paraguay','Uruguay',
                    'Argentina','Chile','Cuba','Dominican Republic']
 
-def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
+def grid_plot(data, region, outdir="plots", deaths=False):
+    """
+    Make subplot grid plots for each state/country of interest in list.
+    Args:
+        data (:obj:`pandas.DataFrame`): Covid statistics on region of interest.
+        region (str): Country/state of interest. Acceptable values are 'world', 
+            'usa', 'latin', 'eu_vs_usa', 'worst_usa', 'worst_global'.
+        outdir (str): Name of directory to save plots to.
+        deaths (Bool): If True, download data on deaths.
+    """
+   
     months = mdates.MonthLocator()
     
     if not os.path.exists(outdir):
@@ -116,17 +126,17 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
 
     for i,ax in enumerate(axes.flatten()):
 
-        ax.bar(dailydata.index, dailydata[statenations[i]], color=bar_c,
-               alpha=alpha)
+        ax.bar(dailydata.index, dailydata[statenations[i]], color=BAR_C,
+               alpha=ALPHA)
         ax.plot(dailydata[statenations[i]].rolling(5,
                                               center=True,
                                               min_periods=2).mean(),
-                                              c=contrast_c, lw=lw)
+                                              c=CONTRAST_c, lw=lw)
         ax.set_ylim(bottom=0)
         total = int(dailydata[statenations[i]].sum())
         lastval = int(dailydata[statenations[i]][-1])
-        ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), xycoords="axes fraction", 
-                    size=fontsize)
+        ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
+                    xycoords="axes fraction", size=fontsize)
         ax.annotate(f"Last: {lastval:,}", (0.035, .9), 
                     xycoords = "axes fraction", size=fontsize, style="italic",
                     color="crimson")
@@ -155,7 +165,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_global"]
-#    regions = ["worst_usa" , "worst_global"]
     for item in regions:
         data, pops = get_data.get_data(item, deaths=args.deaths)
         grid_plot(data, item, deaths=args.deaths)

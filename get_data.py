@@ -6,6 +6,18 @@ import time
 JHU_URL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series"
 
 def download_data(region, deaths=False, url=JHU_URL, outdir="data"):
+    """
+    Download CSV files from JHU.
+    Args:
+        region (str): Country of interest. Acceptable values are 'world', 
+            'usa', 'latin', 'eu_vs_usa', 'worst_usa', 'worst_global'.
+        deaths (Bool): If True, download data on deaths.
+        url (str): URL of JHU repository+directory that houses CSV files.
+        outdir (str): Name of directory to download data to.
+    Returns:
+        outfilename (str): Path of downloaded CSV file.
+    """
+
     if region in ["usa", "us"]:
         if deaths is True:
             filename = "time_series_covid19_deaths_US.csv"
@@ -36,19 +48,29 @@ def download_data(region, deaths=False, url=JHU_URL, outdir="data"):
     return outfilename
 
 def read_data(filename, region):
+    """
+    Read data from JHU CSV files and format into a pandas DataFrame.
+    Args:
+        outfilename (str): Path of downloaded CSV file.
+        region (str): Country of interest. Acceptable values are 'world', 
+            'usa', 'latin', 'eu_vs_usa', 'worst_usa', 'worst_global'.
+    Returns:
+        data (:obj:`pandas.DataFrame`): Covid statistics on region of interest.
+        pops (:obj:`pandas.DataFrame`): Population statistics on region of interst.
+    """
     if region in ["usa", "us"]:
         a = pd.read_csv(filename, index_col='UID')
         a.drop(columns=['iso2', 'iso3', 'code3', 'FIPS', 'Admin2', 
                     'Country_Region','Lat','Long_','Combined_Key'], 
                     inplace=True)
         b = a.groupby('Province_State').sum()
-        statepops0 = pd.read_csv('nst-est2019-01.csv',index_col='State')
-        statepops = statepops0.T
+        pops0 = pd.read_csv('nst-est2019-01.csv',index_col='State')
+        pops = pops0.T
     else:
         a = pd.read_csv(filename)
         b = a.groupby('Country/Region').sum()
         b.drop(columns=['Lat','Long'], inplace=True)
-        statepops = None
+        pops = None
     try:
         b.drop(columns="Population", inplace=True)
     except KeyError:
@@ -57,9 +79,20 @@ def read_data(filename, region):
     data = b.T
     data = data.reindex(dt_index)
 
-    return data, statepops
+    return data, pops
 
 def get_data(region, deaths=False):
+    """
+    Convenience function to download and read JHU CSV files.
+    Args:
+        region (str): Country of interest. Acceptable values are 'world', 
+            'usa', 'latin', 'eu_vs_usa', 'worst_usa', 'worst_global'.
+        deaths (Bool): If True, download data on deaths.
+    Returns:
+        data (:obj:`pandas.DataFrame`): Covid statistics on region of interest.
+        pops (:obj:`pandas.DataFrame`): Population statistics on region of interst.
+    """
+    
     filename = download_data(region, deaths=deaths)
-    data, statepops = read_data(filename, region)
-    return data, statepops
+    data, pops = read_data(filename, region)
+    return data, pops

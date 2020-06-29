@@ -23,6 +23,16 @@ fontsize = "x-large"
 labelsize = "large"
 
 def plot_by_region(region, data_world, data_usa, outdir="plots", deaths=False):
+    """
+    Plot a bar plot of daily new cases or deaths for a single state or country.
+    Args:
+        region (str): Country/state of interest. Acceptable values are 'world', 
+            'usa', 'latin', 'eu_vs_usa', 'worst_usa', 'worst_global'.
+        data_world (:obj:`pandas.DataFrame`): Global covid statistics.
+        data_usa (:obj:`pandas.DataFrame`): USA covid statistics.
+        outdir (str): Name of directory to save plots to.
+        deaths (Bool): If True, download data on deaths.
+    """
 
     if deaths is True:
         lbl = "deaths"

@@ -5,6 +5,12 @@ import grid_plots
 import overlaid_plots
 
 def make_all_plots(deaths=False):
+    """
+    Make overlaid and grid plots.
+    Args:
+        deaths (Bool): If True, download data on deaths.
+    """
+    
     # Get all data
     data_usa, pops_usa = get_data.get_data("usa", deaths=deaths)
     data_world, pops_world = get_data.get_data("world", deaths=deaths)

@@ -21,6 +21,16 @@ N_MIN = 100
 
 def overlaid_plots(region, all_data, pops, region_subset=None, outdir="plots",
                    deaths=False):
+    """
+    Make plots with a subset of states/nations overplotted in one scatter plot. 
+        region (str): Country/state of interest. Acceptable values are 'world', 
+            'usa', 'latin', 'eu_vs_usa', 'worst_usa', 'worst_global'.
+        data (:obj:`pandas.DataFrame`): Covid statistics on either world or USA.
+        region_subset (list): States/nations of interest.
+        outdir (str): Name of directory to save plots to.
+        deaths (Bool): If True, download data on deaths.
+    """
+    
     if deaths is True:
         lbl = "deaths"
     else:
