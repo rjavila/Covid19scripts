@@ -165,7 +165,7 @@ if __name__ == "__main__":
     parser.add_argument('--regions', nargs='+')
     args = parser.parse_args()
     
-    allowed_regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_global"]
+    allowed_regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_world"]
     if args.regions is None:
         regions = allowed_regions
     else:
