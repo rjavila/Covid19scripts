@@ -58,6 +58,8 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
     else:
         lbl = "cases"
 
+    dailydata = data.diff()
+    
     if region in ["world", "global", "latin"]:
         subplots = (3, 4)
         figsize = (12, 6)
@@ -80,6 +82,7 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
         filename = f"states_new_{lbl}.pdf"
     elif region == "eu_vs_usa":
         data["EU"] = data.loc[:,EU_COUNTRIES].sum(axis=1)
+        dailydata = data.diff()
         subplots = (2, 1)
         figsize = (6, 6)
         lw = 1.5
@@ -87,6 +90,21 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
         fontsize = "large"
         statenations = ["US", "EU"]
         filename = f"EU_vs_USA_{lbl}.pdf"
+    elif region in ["worst_usa", "worst_global", "worst_world"]:
+        data_sorted = dailydata.T.sort_values(dailydata.index[-1], ascending=False).T
+        dailydata = data_sorted.iloc[:, :10]
+        subplots = (3, 3)
+        figsize = (13, 10)
+        lw = 1.5
+        labelsize = "small"
+        fontsize= "medium"
+        statenations = dailydata.columns.values
+        if region == "worst_usa":
+            filename = f"worst_usa_{lbl}.pdf"
+        else:
+            filename = f"worst_global_{lbl}.pdf"
+    else:
+        raise KeyError("Region {region} not in acceptable values")
 
     fig, axes = plt.subplots(subplots[0], subplots[1],
                              figsize=(figsize[0], figsize[1]),
@@ -94,7 +112,7 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
     plt.subplots_adjust(wspace=0.35)
     plt.subplots_adjust(hspace=0.35)
 
-    dailydata = data.diff()
+    #daily_sorted = dailydata.reindex(dailydata.sum(axis=0).sort_values(ascending=False).index, axis=1)
 
     for i,ax in enumerate(axes.flatten()):
 
@@ -106,10 +124,12 @@ def grid_plot(data, region, outdir="plots", eu_vs_usa=True, deaths=False):
                                               c=contrast_c, lw=lw)
         ax.set_ylim(bottom=0)
         total = int(dailydata[statenations[i]].sum())
-        ax.annotate(f"{statenations[i]}", (0.035, 1.05), xycoords="axes fraction", 
+        lastval = int(dailydata[statenations[i]][-1])
+        ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), xycoords="axes fraction", 
                     size=fontsize)
-        ax.annotate(f"{total:,}", (0.035, .85), 
-                    xycoords = "axes fraction", size=fontsize, style="italic")
+        ax.annotate(f"Last: {lastval:,}", (0.035, .9), 
+                    xycoords = "axes fraction", size=fontsize, style="italic",
+                    color="crimson")
         ax.set_xlim(left=datetime.date(2020, 2, 27))
         
         plt.gcf().autofmt_xdate(rotation=60, ha="center")
@@ -134,8 +154,8 @@ if __name__ == "__main__":
                         help="Switch to plot deaths instead of cases")
     args = parser.parse_args()
     
-    regions = ["world", "usa", "latin", "eu_vs_usa"]
-#    regions = ["usa"]
+    regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_global"]
+#    regions = ["worst_usa" , "worst_global"]
     for item in regions:
         data, pops = get_data.get_data(item, deaths=args.deaths)
         grid_plot(data, item, deaths=args.deaths)
