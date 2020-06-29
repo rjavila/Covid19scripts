@@ -24,7 +24,7 @@ python grid_plots.py --regions worst_world
 ```
 
 An example plot is found below.
-![Alt text](examples/worst_global_cases.pdf?raw=true "Title")
+![Alt text](examples/worst_global_cases.png?raw=true "worst_global_cases.png")
 
 ## Bar plot for a single state/country
 Genereate a bar plot for a single state or country:
@@ -33,7 +33,7 @@ Genereate a bar plot for a single state or country:
 python plot_by_region.py Florida
 ```
 
-![Alt text](examples/Florida_new_cases.png?raw=true "Title")
+![Alt text](examples/Florida_new_cases.png?raw=true "Florida_new_cases.png")
 
 ## Overlaid plots
 Generate 2 different types of plots for a hard-coded selection of states:
@@ -42,4 +42,4 @@ Generate 2 different types of plots for a hard-coded selection of states:
 Both types of plots are also created with log Y scales and per capita case/death
 numbers, creating a total of 8 plots.
 
-![Alt text](examples/usa_cases_date.png?raw=true "Title")
+![Alt text](examples/usa_cases_date.png?raw=true "usa_cases_date.png")
