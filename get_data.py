@@ -18,7 +18,7 @@ def download_data(region, deaths=False, url=JHU_URL, outdir="data"):
         outfilename (str): Path of downloaded CSV file.
     """
 
-    if region in ["usa", "us"]:
+    if region in ["usa", "us", "worst_usa"]:
         if deaths is True:
             filename = "time_series_covid19_deaths_US.csv"
         else:
@@ -58,7 +58,7 @@ def read_data(filename, region):
         data (:obj:`pandas.DataFrame`): Covid statistics on region of interest.
         pops (:obj:`pandas.DataFrame`): Population statistics on region of interst.
     """
-    if region in ["usa", "us"]:
+    if region in ["usa", "us", "worst_usa"]:
         a = pd.read_csv(filename, index_col='UID')
         a.drop(columns=['iso2', 'iso3', 'code3', 'FIPS', 'Admin2', 
                     'Country_Region','Lat','Long_','Combined_Key'], 
