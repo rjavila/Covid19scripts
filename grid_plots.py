@@ -135,11 +135,21 @@ def grid_plot(data, region, outdir="plots", deaths=False):
         ax.set_ylim(bottom=0)
         total = int(dailydata[statenations[i]].sum())
         lastval = int(dailydata[statenations[i]][-1])
-        ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
-                    xycoords="axes fraction", size=fontsize)
-        ax.annotate(f"Last: {lastval:,}", (0.035, .9), 
-                    xycoords = "axes fraction", size=fontsize, style="italic",
-                    color="crimson")
+        if region == "eu_vs_usa":
+            eu_usa_pops = {"US": 328, "EU": 445} # population in units of millions
+            ax.annotate(f"{statenations[i]}, population: {eu_usa_pops[statenations[i]]:,} million", 
+                (0.035, 1.05), xycoords="axes fraction", size=fontsize)
+            ax.annotate(f"Total: {total:,}", (0.035, .9), 
+                xycoords = "axes fraction", size=fontsize, style="italic")
+            ax.annotate(f"Last: {lastval:,}", (0.035, .8), 
+                xycoords = "axes fraction", size=fontsize, style="italic",
+                color="crimson")
+        else:             
+            ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
+                xycoords="axes fraction", size=fontsize)
+            ax.annotate(f"Last: {lastval:,}", (0.035, .9), 
+                xycoords = "axes fraction", size=fontsize, style="italic",
+                color="crimson")
         ax.set_xlim(left=datetime.date(2020, 2, 27))
         
         plt.gcf().autofmt_xdate(rotation=60, ha="center")
@@ -150,9 +160,12 @@ def grid_plot(data, region, outdir="plots", deaths=False):
         ax.yaxis.set_ticks_position('both')
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
         ax.xaxis.set_major_locator(months)
+    if region == "eu_vs_usa":
+        us_ymax = axes[0].get_ylim()[1]
+        axes[1].set_ylim(top=us_ymax)
 
     plt.suptitle(f'New daily {lbl}\n{dailydata.index[-1]:%B %d, %Y}',
-                 fontsize='large')
+                 fontsize='large', y=1.01)
     outfilename = os.path.join(outdir, filename)
     plt.savefig(outfilename, bbox_inches='tight')
     print(f"Saved {outfilename}")
