@@ -33,7 +33,7 @@ Genereate a bar plot for a single state or country:
 python plot_by_region.py Florida
 ```
 
-![Alt text](examples/Florida_new_cases.png?raw=true "Florida_new_cases.png")
+![Florida plot](examples/Florida_new_cases.png "Florida_new_cases.png")
 
 ## Overlaid plots
 Generate 2 different types of plots for a hard-coded selection of states:
