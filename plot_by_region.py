@@ -68,9 +68,9 @@ def plot_by_region(region, data_world, data_usa, pops_world, pops_usa,
         totallab = f"Total: {total:,} ({perc:.1f}%)"
     else:
         totallab = f"Total: {total:,}"
-    ax.annotate(totallab, (.035, .9), 
+    ax.annotate(totallab, (.035, .94), 
                 xycoords="axes fraction", size="large", style="italic")
-    ax.annotate(f"Last: {lastval:,}", (.035, .83), 
+    ax.annotate(f"Last: {lastval:,}", (.035, .87), 
                 xycoords="axes fraction", size="large", style="italic",
                 color=bar_c)
     
