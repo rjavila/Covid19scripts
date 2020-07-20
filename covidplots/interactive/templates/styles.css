@@ -1,0 +1,20 @@
+.custom_button button.bk.bk-btn.bk-btn-default {
+    font-size:11pt;
+}
+
+.custom_button div.bk.bk-btn.bk-btn-default.bk-active {
+    font-size:11pt;
+}
+
+.custom_button div.bk.bk-btn.bk-btn-default {
+    font-size:11pt;
+}
+
+.custom_checkbox div.bk.bk-input-group {
+    font-size:13pt;
+}
+
+input[type=checkbox] {
+        zoom: 1.5;;
+}
+
