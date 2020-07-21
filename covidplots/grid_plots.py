@@ -42,10 +42,11 @@ EU_COUNTRIES = ['Austria','Belgium','Bulgaria','Croatia','Cyprus','Czechia',
                 'Malta','Netherlands','Poland','Portugal','Romania','Slovakia',
                 'Slovenia','Spain','Sweden']
 
-LATIN_COUNTRIES = ['Mexico','Guatemala','Belize','El Salvador','Honduras',
-                   'Nicaragua','Costa Rica','Panama','Colombia','Venezuela',
-                   'Ecuador','Peru','Brazil','Bolivia','Paraguay','Uruguay',
-                   'Argentina','Chile','Cuba','Dominican Republic']
+LATIN_COUNTRIES = ['Argentina','Belize','Bolivia','Brazil','Chile','Colombia',
+                   'Costa Rica','Cuba','Dominican Republic','Ecuador',
+                   'El Salvador','Guatemala','Honduras','Mexico','Nicaragua',
+                   'Panama','Paraguay','Peru','Uruguay','Venezuela']
+
 
 def grid_plot(data, region, outdir="plots", deaths=False):
     """
@@ -82,6 +83,7 @@ def grid_plot(data, region, outdir="plots", deaths=False):
         else:
             statenations = LATIN_COUNTRIES
             filename = f"latin_new_{lbl}.pdf"
+            subplots = (4,5)
     elif region == "usa":
         subplots = (5, 10)
         figsize = (20, 9)
