@@ -1,7 +1,10 @@
+import numpy as np
 import os
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib.transforms as transforms
+from matplotlib.patches import Rectangle
 import pandas as pd
 import sys
 import argparse
@@ -17,9 +20,13 @@ if stylesheet == "dark_background":
     CONTRAST = "gold"
     ALPHA = 1.0
 else:
-    BAR_C = "crimson"
-    CONTRAST_c = "crimson"
+    BAR_C = "#e5aabc"
+    CONTRAST_C = "crimson"
     ALPHA = 0.3
+    OUTSIDE_PLOT_C = "dimgrey"
+    VLINE_C = "darkgrey" 
+    BOX_EDGE_C = "black"
+    BOX_FACE_C = "lightgrey"
 
 STATES = ['Alabama','Alaska','Arizona','Arkansas','California',
           'Colorado','Connecticut','Delaware','Florida',
@@ -47,7 +54,6 @@ LATIN_COUNTRIES = ['Argentina','Belize','Bolivia','Brazil','Chile','Colombia',
                    'El Salvador','Guatemala','Honduras','Mexico','Nicaragua',
                    'Panama','Paraguay','Peru','Uruguay','Venezuela']
 
-
 def grid_plot(data, region, outdir="plots", deaths=False):
     """
     Make subplot grid plots for each state/country of interest in list.
@@ -73,7 +79,7 @@ def grid_plot(data, region, outdir="plots", deaths=False):
     
     if region in ["world", "global", "latin"]:
         subplots = (3, 4)
-        figsize = (12, 6)
+        figsize = (18, 9)
         lw = 1.25
         labelsize = "small"
         fontsize = "medium"
@@ -96,9 +102,9 @@ def grid_plot(data, region, outdir="plots", deaths=False):
         data["EU"] = data.loc[:,EU_COUNTRIES].sum(axis=1)
         dailydata = data.diff()
         subplots = (2, 1)
-        figsize = (6, 6)
+        figsize = (12, 10)
         lw = 1.5
-        labelsize = "small"
+        labelsize = "medium"
         fontsize = "large"
         statenations = ["US", "EU"]
         filename = f"EU_vs_USA_{lbl}.pdf"
@@ -127,31 +133,17 @@ def grid_plot(data, region, outdir="plots", deaths=False):
     #daily_sorted = dailydata.reindex(dailydata.sum(axis=0).sort_values(ascending=False).index, axis=1)
 
     for i,ax in enumerate(axes.flatten()):
-
-        ax.bar(dailydata.index, dailydata[statenations[i]], color=BAR_C,
-               alpha=ALPHA)
+        
+#        if region == "eu_vs_usa":
+        ax.bar(dailydata.index, dailydata[statenations[i]], color=BAR_C, zorder=5)
         ax.plot(dailydata[statenations[i]].rolling(5,
                                               center=True,
                                               min_periods=2).mean(),
-                                              c=CONTRAST_c, lw=lw)
+                                              c=CONTRAST_C, lw=lw, zorder=10)
         ax.set_ylim(bottom=0)
         total = int(dailydata[statenations[i]].sum())
         lastval = int(dailydata[statenations[i]][-1])
-        if region == "eu_vs_usa":
-            eu_usa_pops = {"US": 328, "EU": 445} # population in units of millions
-            ax.annotate(f"{statenations[i]}, population: {eu_usa_pops[statenations[i]]:,} million", 
-                (0.035, 1.05), xycoords="axes fraction", size=fontsize)
-            ax.annotate(f"Total: {total:,}", (0.035, .9), 
-                xycoords = "axes fraction", size=fontsize, style="italic")
-            ax.annotate(f"Last: {lastval:,}", (0.035, .8), 
-                xycoords = "axes fraction", size=fontsize, style="italic",
-                color="crimson")
-        else:             
-            ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
-                xycoords="axes fraction", size=fontsize)
-            ax.annotate(f"Last: {lastval:,}", (0.035, .9), 
-                xycoords = "axes fraction", size=fontsize, style="italic",
-                color="crimson")
+        
         ax.set_xlim(left=datetime.date(2020, 2, 27))
         
         plt.gcf().autofmt_xdate(rotation=60, ha="center")
@@ -162,12 +154,90 @@ def grid_plot(data, region, outdir="plots", deaths=False):
         ax.yaxis.set_ticks_position('both')
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
         ax.xaxis.set_major_locator(months)
-    if region == "eu_vs_usa":
-        us_ymax = axes[0].get_ylim()[1]
-        axes[1].set_ylim(top=us_ymax)
+        ax.yaxis.get_major_ticks()[0].label1.set_visible(False)
+        ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+        
+        if region != "eu_vs_usa":
+            ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
+                xycoords="axes fraction", size=fontsize)
+            ax.annotate(f"Last: {lastval:,}", (0.035, .9), 
+                xycoords = "axes fraction", size=fontsize, style="italic",
+                color=CONTRAST_C)
+        else:
+            ax.set_xlim(left=datetime.date(2020, 2, 21))
+            # Get the maximum number of millions of cases so far
+            maxmil = data[statenations[i]][-1] - data[statenations[i]][-1] % 1000000
+            millions = np.arange(1000000, maxmil+1000000, 1000000)
+            # The indices for the next entry after each million cases
+            millions_inds = [np.argmax(data[statenations[i]] > x) for x in millions]
+            # Get the index corresponding to the next entry after 100 cases
+            cases100_i = np.argmax(data[statenations[i]] > 100)
+            # Vertical lines will be put at 100 cases and each million afterward
+            # The last index is for marking the last date, but no vline
+            vline_inds = [cases100_i] + millions_inds + [len(dailydata)-1]
+            # Get the transformation function the data coordinates in X and
+            # axis fraction in Y
+            trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
+            # Make one continuous line from 100 cases to last date
+            ax.plot([dailydata.index[[cases100_i]], dailydata.index[[-1]]],
+                    [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
+                    clip_on=False)
+            for j in range(len(vline_inds)):
+                ant_kwargs = {"size": 8, "color": OUTSIDE_PLOT_C, "va": "center", "ha": "center",
+                              "xycoords": ("data", "axes fraction")}
+                # This makes the | symbol at the end of each time segment
+                ax.annotate("|", xy=(dailydata.index[[vline_inds[j]]], 1.03), 
+                            **ant_kwargs)
+                # If on the last index (last entry in dataset), we don't plot the vline
+                if j == len(vline_inds)-1:
+                    continue
+                # Determine the middle point between the ends of the time segment
+                # and how many days are in the current time segment
+                middle_i = vline_inds[j] + int((vline_inds[j+1] - vline_inds[j])/2)
+                ndays = (dailydata.index[[vline_inds[j+1]]] - dailydata.index[[vline_inds[j]]]).days[0]
+                # Mark how many days are in the current time segment
+                ax.annotate(f"{ndays} days", (dailydata.index[[middle_i]], 1.05), 
+                            xycoords= ("data", "axes fraction"), ha="center", 
+                            color=OUTSIDE_PLOT_C, style="italic")
+                # Make a vertical line in the plot
+                ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, ls="dotted", 
+                           alpha=0.7, zorder=0)
+                if j == 0:
+                    lab = "100"
+                else:
+                    lab = f"{millions[j-1]/1000000:.0f} mil"
+                ax.annotate(lab, 
+                            (dailydata.index[[vline_inds[j]]]+datetime.timedelta(days=1), .93),
+                            xycoords=("data", "axes fraction"), 
+                            style="italic", color=VLINE_C)
+            # Define axis fraction coords for the Total and Last annotations
+            # and the box surrounding them
+            ant_x = 0.027
+            ant_ylo = 0.75
+            ant_yhi = ant_ylo + 0.09
+            # Put a box around the Total and Last annotations
+            box = Rectangle((ant_x-0.003, ant_ylo-0.020), .137, .16, transform=ax.transAxes,
+                edgecolor=BOX_EDGE_C, facecolor=BOX_FACE_C, alpha=0.5)
+            ax.add_patch(box)
+            ax.annotate(f"Total: {total:,}", (ant_x, ant_yhi), va="center", ha="left", 
+                xycoords = "axes fraction", size=fontsize, style="italic")
+            ax.annotate(f"Last: {lastval:,}", (ant_x, ant_ylo), 
+                xycoords = "axes fraction", size=fontsize, style="italic",
+                color=CONTRAST_C)
+            # Set both US and EU ylim maximum to the same value to show how
+            # terrible we are
+            us_ymax = axes[0].get_ylim()[1]
+            ax.set_ylim(top=us_ymax)
+            
+            # Define US and EU population (in units of millions) by hand
+            # and write a title
+            eu_usa_pops = {"US": 328, "EU": 445} 
+            tester = "US"
+            ax.set_title(f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million", 
+                loc="left", pad=27, fontsize=fontsize)
 
     plt.suptitle(f'New daily {lbl}\n{dailydata.index[-1]:%B %d, %Y}',
-                 fontsize='large', y=1.01)
+                 fontsize='x-large', y=1.01)
     outfilename = os.path.join(outdir, filename)
     plt.savefig(outfilename, bbox_inches='tight')
     print(f"Saved {outfilename}")
