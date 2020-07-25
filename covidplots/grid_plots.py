@@ -182,23 +182,27 @@ def grid_plot(data, region, outdir="plots", deaths=False):
             ax.plot([dailydata.index[[cases100_i]], dailydata.index[[-1]]],
                     [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
                     clip_on=False)
+            
             for j in range(len(vline_inds)):
                 ant_kwargs = {"size": 8, "color": OUTSIDE_PLOT_C, "va": "center", "ha": "center",
                               "xycoords": ("data", "axes fraction")}
                 # This makes the | symbol at the end of each time segment
                 ax.annotate("|", xy=(dailydata.index[[vline_inds[j]]], 1.03), 
                             **ant_kwargs)
+
+                # Annotate how many days elapsed since last integer million cases
+                # Extra annotation at the end for last integer million -> now
+                if j != 0: # j=0 corresponds to 100 cases
+                    ndays = vline_inds[j] - vline_inds[j-1]
+                    middle_i = vline_inds[j] - int(ndays/2)
+                    if ndays > 10: # if <10, not enough room for label
+                        ax.annotate(f"{ndays} days", (dailydata.index[[middle_i]], 1.05), 
+                            xycoords= ("data", "axes fraction"), ha="center", 
+                            color=OUTSIDE_PLOT_C, style="italic")
+                
                 # If on the last index (last entry in dataset), we don't plot the vline
                 if j == len(vline_inds)-1:
                     continue
-                # Determine the middle point between the ends of the time segment
-                # and how many days are in the current time segment
-                middle_i = vline_inds[j] + int((vline_inds[j+1] - vline_inds[j])/2)
-                ndays = (dailydata.index[[vline_inds[j+1]]] - dailydata.index[[vline_inds[j]]]).days[0]
-                # Mark how many days are in the current time segment
-                ax.annotate(f"{ndays} days", (dailydata.index[[middle_i]], 1.05), 
-                            xycoords= ("data", "axes fraction"), ha="center", 
-                            color=OUTSIDE_PLOT_C, style="italic")
                 # Make a vertical line in the plot
                 ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, ls="dotted", 
                            alpha=0.7, zorder=0)
@@ -210,6 +214,7 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                             (dailydata.index[[vline_inds[j]]]+datetime.timedelta(days=1), .93),
                             xycoords=("data", "axes fraction"), 
                             style="italic", color=VLINE_C)
+            
             # Define axis fraction coords for the Total and Last annotations
             # and the box surrounding them
             ant_x = 0.027
