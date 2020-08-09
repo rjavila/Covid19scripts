@@ -70,7 +70,12 @@ def read_data(filename, region):
         a = pd.read_csv(filename)
         b = a.groupby('Country/Region').sum()
         b.drop(columns=['Lat','Long'], inplace=True)
-        pops = None
+        pops0 = pd.read_csv("Census_data_20200726.csv", skiprows=1)
+        pops0.drop_duplicates(subset="Country", inplace=True) 
+        pops0.drop(columns=['Region', 'Year', 'Area (sq. km.)',
+               'Density (persons per sq. km.)'], inplace=True)
+        pops0.set_index("Country", inplace=True)
+        pops = pops0.T
     try:
         b.drop(columns="Population", inplace=True)
     except KeyError:
