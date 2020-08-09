@@ -50,6 +50,8 @@ def download_data(region, deaths=False, url=JHU_URL, outdir="data"):
 def read_data(filename, region):
     """
     Read data from JHU CSV files and format into a pandas DataFrame.
+    Global populations from here:
+    https://www.census.gov/data-tools/demo/idb/region.php?T=6&RT=0&A=separate&Y=2020&C=&R=1
     Args:
         outfilename (str): Path of downloaded CSV file.
         region (str): Country of interest. Acceptable values are 'world', 
