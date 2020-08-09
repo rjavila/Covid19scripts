@@ -136,7 +136,7 @@ def grid_plot(data, region, outdir="plots", deaths=False):
         
 #        if region == "eu_vs_usa":
         ax.bar(dailydata.index, dailydata[statenations[i]], color=BAR_C, zorder=5)
-        ax.plot(dailydata[statenations[i]].rolling(5,
+        ax.plot(dailydata[statenations[i]].rolling(7,
                                               center=True,
                                               min_periods=2).mean(),
                                               c=CONTRAST_C, lw=lw, zorder=10)
