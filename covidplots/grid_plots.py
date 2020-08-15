@@ -165,16 +165,24 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                 color=CONTRAST_C)
         else:
             ax.set_xlim(left=datetime.date(2020, 2, 21))
-            # Get the maximum number of millions of cases so far
-            maxmil = data[statenations[i]][-1] - data[statenations[i]][-1] % 1000000
-            millions = np.arange(1000000, maxmil+1000000, 1000000)
+            # Get the maximum number of intervals/10,000s of cases so far
+            if lbl == "deaths":
+                interval = 20000
+                unit = 1000
+                vline_lbl = "k"
+            else:
+                interval = 1000000
+                unit = 1000000
+                vline_lbl = " mil"
+            maxinterval = data[statenations[i]][-1] - data[statenations[i]][-1] % interval
+            intervals = np.arange(interval, maxinterval+interval, interval)
             # The indices for the next entry after each million cases
-            millions_inds = [np.argmax(data[statenations[i]] > x) for x in millions]
+            intervals_inds = [np.argmax(data[statenations[i]] > x) for x in intervals]
             # Get the index corresponding to the next entry after 100 cases
             cases100_i = np.argmax(data[statenations[i]] > 100)
             # Vertical lines will be put at 100 cases and each million afterward
             # The last index is for marking the last date, but no vline
-            vline_inds = [cases100_i] + millions_inds + [len(dailydata)-1]
+            vline_inds = [cases100_i] + intervals_inds + [len(dailydata)-1]
             # Get the transformation function the data coordinates in X and
             # axis fraction in Y
             trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
@@ -195,10 +203,13 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                 if j != 0: # j=0 corresponds to 100 cases
                     ndays = vline_inds[j] - vline_inds[j-1]
                     middle_i = vline_inds[j] - int(ndays/2)
-                    if ndays > 10: # if <10, not enough room for label
-                        ax.annotate(f"{ndays} days", (dailydata.index[[middle_i]], 1.05), 
-                            xycoords= ("data", "axes fraction"), ha="center", 
-                            color=OUTSIDE_PLOT_C, style="italic")
+                    if ndays > 10: # if <10, not enough room for full label
+                        elapsed_lbl = f"{ndays} days"
+                    else:
+                        elapsed_lbl = f"{ndays}d"
+                    ax.annotate(elapsed_lbl, (dailydata.index[[middle_i]], 1.05), 
+                        xycoords= ("data", "axes fraction"), ha="center", 
+                        color=OUTSIDE_PLOT_C, style="italic")
                 
                 # If on the last index (last entry in dataset), we don't plot the vline
                 if j == len(vline_inds)-1:
@@ -209,9 +220,9 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                 if j == 0:
                     lab = "100"
                 else:
-                    lab = f"{millions[j-1]/1000000:.0f} mil"
+                    lab = f"{intervals[j-1]/unit:.0f}{vline_lbl}"
                 ax.annotate(lab, 
-                            (dailydata.index[[vline_inds[j]]]+datetime.timedelta(days=1), .93),
+                            (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=12), .93),
                             xycoords=("data", "axes fraction"), 
                             style="italic", color=VLINE_C)
             
@@ -229,17 +240,21 @@ def grid_plot(data, region, outdir="plots", deaths=False):
             ax.annotate(f"Last: {lastval:,}", (ant_x, ant_ylo), 
                 xycoords = "axes fraction", size=fontsize, style="italic",
                 color=CONTRAST_C)
-            # Set both US and EU ylim maximum to the same value to show how
-            # terrible we are
-            us_ymax = axes[0].get_ylim()[1]
-            ax.set_ylim(top=us_ymax)
             
-            # Define US and EU population (in units of millions) by hand
+            # Define US and EU population (in units of intervals) by hand
             # and write a title
             eu_usa_pops = {"US": 328, "EU": 445} 
             tester = "US"
             ax.set_title(f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million", 
                 loc="left", pad=27, fontsize=fontsize)
+   
+    if region == "eu_vs_usa": 
+        # Set both US and EU ylim maximum to the same value 
+        us_ymax = axes[0].get_ylim()[1]
+        eu_ymax = axes[1].get_ylim()[1]
+        max_max = max(us_ymax, eu_ymax)
+        axes[0].set_ylim(top=max_max)
+        axes[1].set_ylim(top=max_max)
 
     plt.suptitle(f'New daily {lbl}\n{dailydata.index[-1]:%B %d, %Y}',
                  fontsize='x-large', y=1.01)
