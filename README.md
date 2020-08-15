@@ -15,7 +15,7 @@ Generate an interactive Bokeh plot to display the daily case numbers for
 USA states. From the `Covid19scripts/covidplots` directory:
 
 ```
-bokeh serve --show interactive
+bokeh serve --show usa_interactive
 ```
 
 ### Grid plots
