@@ -3,6 +3,8 @@ import wget
 import os
 import time
 
+from covidplots.continents import fix_jhu_df, fix_census_df
+
 JHU_URL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series"
 
 def download_data(region, deaths=False, url=JHU_URL, outdir="data"):
@@ -72,8 +74,8 @@ def read_data(filename, region):
         a = pd.read_csv(filename)
         b = a.groupby('Country/Region').sum()
         b.drop(columns=['Lat','Long'], inplace=True)
-        pops0 = pd.read_csv("Census_data_20200726.csv", skiprows=1)
-        pops0.drop_duplicates(subset="Country", inplace=True) 
+        
+        pops0 = pd.read_csv("Census_data_2020_world_regions.csv", skiprows=1)
         pops0.drop(columns=['Region', 'Year', 'Area (sq. km.)',
                'Density (persons per sq. km.)'], inplace=True)
         pops0.set_index("Country", inplace=True)
@@ -85,6 +87,11 @@ def read_data(filename, region):
     dt_index = pd.to_datetime(b.columns)
     data = b.T
     data = data.reindex(dt_index)
+
+    # There are few countries that need reformatting
+    if region not in ["usa", "us", "worst_usa"]:
+        data = fix_jhu_df(data)
+        pops = fix_census_df(pops)
 
     return data, pops
 
