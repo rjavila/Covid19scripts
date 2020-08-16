@@ -151,11 +151,17 @@ def make_plot(src):
 #-----------------------------------------------------------------------------#
 
 def get_active_tab():
+    """
+    Get the name of the active tab.
+    Returns:
+        tab_title (str): Name of active tab.
+    """
     tab_i = tabs.active
     tab_title = tabs.tabs[tab_i].title
     return tab_title
 
 #-----------------------------------------------------------------------------#
+
 
 def update_plot(attr, old, new):
     """
@@ -166,29 +172,9 @@ def update_plot(attr, old, new):
     
     tab_title = get_active_tab()
     regions_to_plot = [
-            checkbox_d[tab_title][0].labels[i] for i in checkbox_d[tab_title][0].active]\
-         + [checkbox_d[tab_title][1].labels[i] for i in checkbox_d[tab_title][1].active]
+            all_regions_d[tab_title][0][i] for i in checkbox_d[tab_title][0].active]\
+         + [all_regions_d[tab_title][1][i] for i in checkbox_d[tab_title][1].active]
 
-    # Corresponds to unscaled
-    if radio_buttons.active == 0:
-        new_src = make_data_src(regions_to_plot)
-    # Corresponds to per capita
-    else:
-        new_src = make_data_src(regions_to_plot, percapita=True)
-    
-    srcs[tab_title].data.update(new_src.data)
-
-#-----------------------------------------------------------------------------#
-
-def all_update_plot(attr, old, new):
-    tab_title = get_active_tab()
-    regions_to_plot = []
-    for ms in multi_selects:
-        regions_to_plot += ms.value
-    text = all_text_input.value
-    if text != "":
-        regions_to_plot += text.split("\n")
-    
     # Corresponds to unscaled
     if radio_buttons.active == 0:
         new_src = make_data_src(regions_to_plot)
@@ -201,8 +187,12 @@ def all_update_plot(attr, old, new):
 #-----------------------------------------------------------------------------#
 
 def text_update(attr, old, new):
+    """
+    When text is entered in the textbox, see if entered text matches 
+    countries in the current tab and plot them.
+    """
     tab_title = get_active_tab()
-    text = text_input.value
+    text = textinput_d[tab_title].value
     regions_to_plot = text.split("\n")
     try:
         inds_bool0 = np.in1d(checkbox_d[tab_title][0].labels, regions_to_plot)
@@ -211,22 +201,6 @@ def text_update(attr, old, new):
         inds1 = np.where(inds_bool1 == True)[0]
         checkbox_d[tab_title][0].active = list(inds0)
         checkbox_d[tab_title][1].active = list(inds1)
-    except KeyError:
-        pass
-
-#-----------------------------------------------------------------------------#
-
-def all_text_update(attr, old, new):
-    tab_title = get_active_tab()
-    text = all_text_input.value
-    regions_to_plot = text.split("\n")
-    try:# Corresponds to unscaled
-        if radio_buttons.active == 0:
-            new_src = make_data_src(regions_to_plot)
-        # Corresponds to per capita
-        else:
-            new_src = make_data_src(regions_to_plot, percapita=True)
-        srcs[tab_title].data.update(new_src.data)
     except KeyError:
         pass
 
@@ -245,17 +219,28 @@ def unselect_all_update():
     tab_title = get_active_tab()
     checkbox_d[tab_title][0].active = []
     checkbox_d[tab_title][1].active = []
+    textinput_d[tab_title].value = ""
+    if tab_title == "All":
+        for ms in multi_selects:
+            ms.value = []
 
 #-----------------------------------------------------------------------------#
 
-def all_unselect_all_update():
-    """ Unselect all regions for display. """
-    tab_title = get_active_tab()
-    checkbox_d[tab_title][0].active = []
-    checkbox_d[tab_title][1].active = []
-    for ms in multi_selects:
-        ms.value = []
-    text_input.value = ""
+def get_worst(cont, worstx=worstx):
+    """
+    Get the worst X regions (by default, 5).
+    Args:
+        cont (str): Continent name.
+        worstx (int): Get worst countries 1 - worstx, be default 5. 
+    Returns:
+        worstnames (list): Names of worst countries.
+    """
+
+    data_cont = data.loc[:, by_cont[cont]]
+    data_sorted = data_cont.T.sort_values(data_cont.index[-1], ascending=False).T
+    topworst = data_sorted.iloc[:, :worstx] 
+    worstnames = topworst.columns.values
+    return worstnames
 
 #-----------------------------------------------------------------------------#
 
@@ -265,30 +250,41 @@ def worst_update():
     cases on the last available date.
     """
     tab_title = get_active_tab()
+    if tab_title == "All":
+        for ms in multi_selects:
+            ms.value = []
     checkbox_d[tab_title][0].active = worstinds_d[tab_title][0]
     checkbox_d[tab_title][1].active = worstinds_d[tab_title][1]
 
 #-----------------------------------------------------------------------------#
 
-def all_worst_update():
-    """ 
-    Select worst regions for display. Worst is defined as highest number of 
-    cases on the last available date.
+def create_text(cont):
     """
-    
-    all_unselect_all_update()
-    tab_title = get_active_tab()
-    # Corresponds to unscaled
-    if radio_buttons.active == 0:
-        new_src = make_data_src(worstallnames)
-    # Corresponds to per capita
-    else:
-        new_src = make_data_src(worstallnames, percapita=True)
-    srcs[tab_title].data.update(new_src.data)
+    Create a box to enter text for each tab.
+    Args:
+        cont (str): Continent name.
+    Returns:
+        text_input (:obj:`TextAreaInput`): Text input box.
+    """
+    text_input = TextAreaInput(value="",
+        rows=6, 
+        title="Manually enter line-separated countries, hit tab when finished") 
+    text_input.on_change("value", text_update)
+    return text_input
 
 #-----------------------------------------------------------------------------#
 
 def create_checkboxes(cont):
+    """
+    Create checkboxes.
+    Args:
+        cont (str): Continent name.
+    Returns:
+        all_regions1 (list): List of regions corresponding to checkbox column1. 
+        all_regions2 (list): List of regions corresponding to checkbox column2.
+        region_selection1 (:obj:`CheckboxGroup`): Checkbox column1.
+        region_selection2 (:obj:`CheckboxGroup`): Checkbox column2.
+    """
     # Split into groups to make the checkboxes 2 columns
     all_regions = by_cont[cont]
     middle = int(np.floor(len(all_regions)/2))
@@ -306,6 +302,13 @@ def create_checkboxes(cont):
 #-----------------------------------------------------------------------------#
 
 def create_multiselect(cont):
+    """
+    Create a multiselect box for each continent, for the "All" tab.
+    Args:
+        cont (str): Continent name.
+    Returns:
+        multi_select (:obj:`MultiSelect`): Multiselect box.
+    """
     multi_select = MultiSelect(title=cont, value=[], 
                                options=by_cont[cont])
     multi_select.on_change("value", multi_update)
@@ -314,6 +317,7 @@ def create_multiselect(cont):
 #-----------------------------------------------------------------------------#
 
 def multi_update(attr, old, new):
+    """ When a multiselect box is updated, change regions to display. """
     tab_title = get_active_tab()
     regions_to_plot = []
     for ms in multi_selects:
@@ -324,15 +328,6 @@ def multi_update(attr, old, new):
     inds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in regions_to_plot]
     checkbox_d[tab_title][0].active = inds0
     checkbox_d[tab_title][1].active = inds1
-
-#-----------------------------------------------------------------------------#
-
-def get_worst(cont, worstx=worstx):
-    data_cont = data.loc[:, by_cont[cont]]
-    data_sorted = data_cont.T.sort_values(data_cont.index[-1], ascending=False).T
-    topworst = data_sorted.iloc[:, :worstx] 
-    worstnames = topworst.columns.values
-    return worstnames
 
 #-----------------------------------------------------------------------------#
 
@@ -351,16 +346,11 @@ unselect_all.on_click(unselect_all_update)
 worst = Button(label=f"Show Worst {worstx} Countries", css_classes=["custom_button"])
 worst.on_click(worst_update)
 
-# Text input to enter individual countries
-text_input = TextAreaInput(value="",
-                rows=6, 
-                title="Manually enter line-separated countries, hit tab when finished") 
-text_input.on_change("value", text_update)
-
 all_regions_d = {}
 checkbox_d = {}
-multi_selects = []
+textinput_d = {}
 worstinds_d = {}
+multi_selects = []
 srcs = {}
 tabs = []
 for cont in all_conts:
@@ -368,6 +358,10 @@ for cont in all_conts:
     multi_select = create_multiselect(cont)
     multi_selects.append(multi_select)
 
+    # Text input to enter individual countries
+    text_input = create_text(cont)
+    textinput_d[cont] = text_input
+    
     # Checkboxes to select regions to display
     all_regions1, all_regions2, region_selection1, region_selection2 = create_checkboxes(cont)
     checkbox_d[cont] = [region_selection1, region_selection2]
@@ -387,7 +381,7 @@ for cont in all_conts:
 
     # Determine the initial default selected regions 
     # Create initial data & plot
-    initial_regions = [region_selection1.labels[i] for i in region_selection1.active]
+    initial_regions = [all_regions1[i] for i in region_selection1.active]
     src = make_data_src(initial_regions)
     srcs[cont] = src
     p = make_plot(src)
@@ -412,13 +406,13 @@ p = make_plot(src)
 # Radio button group for selecting unscaled vs per capita
 all_radio_buttons = RadioButtonGroup(labels=["Unscaled", "Per Million"], active=0, 
                                  css_classes=["custom_button"])
-all_radio_buttons.on_change("active", all_update_plot)
+all_radio_buttons.on_change("active", update_plot)
 # Button for displaying worst regions for ALL countries
 all_worst = Button(label=f"Worst 9", css_classes=["custom_button"])
 all_worst.on_click(worst_update)
 # Unselect all
 all_unselect_all = Button(label="Unselect All", css_classes=["custom_button"])
-all_unselect_all.on_click(all_unselect_all_update)
+all_unselect_all.on_click(unselect_all_update)
 # Put controls/widgets in a single columns element
 widgets = column(radio_buttons, 
                  row(all_worst, all_unselect_all, width=350),
@@ -429,7 +423,6 @@ grid = row(widgets, p, spacing=75)
 tab = Panel(child=grid, title=cont)
 tabs.append(tab)
 
+# Add tabs to the current document (displays plot)
 tabs = Tabs(tabs=tabs)
-
-# Add it to the current document (displays plot)
 curdoc().add_root(tabs)
