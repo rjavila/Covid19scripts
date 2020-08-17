@@ -50,6 +50,8 @@ def download_data(region, deaths=False, url=JHU_URL, outdir="data"):
 def read_data(filename, region):
     """
     Read data from JHU CSV files and format into a pandas DataFrame.
+    Global populations from here:
+    https://www.census.gov/data-tools/demo/idb/region.php?T=6&RT=0&A=separate&Y=2020&C=&R=1
     Args:
         outfilename (str): Path of downloaded CSV file.
         region (str): Country of interest. Acceptable values are 'world', 
@@ -70,7 +72,12 @@ def read_data(filename, region):
         a = pd.read_csv(filename)
         b = a.groupby('Country/Region').sum()
         b.drop(columns=['Lat','Long'], inplace=True)
-        pops = None
+        pops0 = pd.read_csv("Census_data_20200726.csv", skiprows=1)
+        pops0.drop_duplicates(subset="Country", inplace=True) 
+        pops0.drop(columns=['Region', 'Year', 'Area (sq. km.)',
+               'Density (persons per sq. km.)'], inplace=True)
+        pops0.set_index("Country", inplace=True)
+        pops = pops0.T
     try:
         b.drop(columns="Population", inplace=True)
     except KeyError:
