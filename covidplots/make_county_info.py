@@ -35,6 +35,7 @@ def get_data():
     #Reading in the COVID data
     covid = pd.read_csv('data/time_series_covid19_confirmed_US.csv',
                         index_col='FIPS')
+    countynames = covid.Combined_Key
     covid.drop(columns=['UID','iso2','iso3','code3','Combined_Key',
                         'Admin2','Province_State','Country_Region',
                         'Lat','Long_'],
@@ -50,10 +51,11 @@ def get_data():
     #covid = covid.diff()
     covid.rename(index=str,inplace=True)
     covid = covid.T
+    covid = pd.concat([countynames,covid],axis=1,ignore_index=False)
 
     data = data.merge(covid,on='FIPS') 
 
-    data[data.columns[3:]] = 1000*data[data.columns[3:]].div(data.POPESTIMATE2019,axis=0)
+    data[data.columns[4:]] = 1000*data[data.columns[4:]].div(data.POPESTIMATE2019,axis=0)
 
     return data
 
@@ -63,13 +65,11 @@ def do_maps(data):
     vmin,vmax = -250,250
     data.to_crs('EPSG:2163',inplace=True)
 
-    for col in data.columns[3:]:
+    for col in data.columns[4:]:
 
         fig,ax = plt.subplots(1,figsize=(24,15.44),num=col)
         ax.axis('off')
        
-        #vmax = 0.05*data[col].max()
-        #print(vmax)
         sm = plt.cm.ScalarMappable(cmap=cmap,
                                    norm=plt.Normalize(vmin=vmin,vmax=vmax)
                                    )
@@ -79,10 +79,8 @@ def do_maps(data):
         #cbar.set_ticks([])
        
         data.plot(column=col,cmap='Reds', scheme='percentiles',
-                  classification_kwds={'pct':np.arange(0,101)},
+                  classification_kwds={'pct':[90,95,100]},
                   linewidth=0.25,ax=ax,edgecolor='0.5')
-        #ax.set_xlim(-128,-66)
-        #ax.set_ylim(23,50)
         ax.set_xlim(-2.2e6,2.7e6)
         ax.set_ylim(-2.3e6,9e5)
         ax.annotate(f'{col[:10]}',xy=(0.5,0.95),xycoords='figure fraction',
