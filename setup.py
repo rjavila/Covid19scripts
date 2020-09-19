@@ -7,6 +7,7 @@ setup(
     packages = find_packages(),
     install_requires = ["pandas",
                         "geopandas",
+                        "mapclassify",
                         "pywget",
                         "bokeh"]
     )
