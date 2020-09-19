@@ -4,7 +4,7 @@ import numpy as np
 
 def get_data():
 
-    path = 'Covid19scripts/covidplots/data'
+    path = 'data'
     #Reading in government tables.
     allpop = pd.read_csv(f'{path}/county_pop.csv')
     map_df = gpd.read_file(f'{path}/cb_2019_us_county_500k.shp')
