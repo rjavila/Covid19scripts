@@ -12,8 +12,8 @@ from copy import copy
 from astropy.time import Time
 
 #Reading in government tables.
-allpop = pd.read_csv('data/county_pop.csv') 
-map_df = gpd.read_file('data/cb_2019_us_county_500k.shp')
+allpop = pd.read_csv('geo_pop_data/county_pop.csv') 
+map_df = gpd.read_file('geo_pop_data/cb_2019_us_county_500k.shp')
 
 #Keep only the 50 states and DC
 idx = map_df.STATEFP.astype('float')<57
@@ -35,7 +35,7 @@ data.FIPS = data.FIPS.astype('float')
 
 
 #Reading in the COVID data
-covid = pd.read_csv('data/time_series_covid19_confirmed_US.csv',
+covid = pd.read_csv('covid_data/time_series_covid19_confirmed_US.csv',
                     index_col='FIPS')
 countynames = covid.Combined_Key
 covid.drop(columns=['UID','iso2','iso3','code3','Combined_Key',
