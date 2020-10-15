@@ -1,7 +1,17 @@
 '''
-Script to merge together the US county shapefiles and population 
-data into a single geopandas dataframe. This can then be used with
-the COVID19 data to make some maps.
+Script to make a movie showing the weekly progression of COVID on 
+a county level. 
+The weekly cases by population, are broken down into nationwide 
+percentiles, and shown on a map.  
+
+This script takes the US county shapefiles and population data and 
+merges them into a single geopandas dataframe. This is then combined 
+with the COVID19 data to make the maps.
+
+Requirements
+------------
+Besides the python dependencies, this script requires the FFMPEG
+be installed on the system. 
 '''
 from matplotlib.animation import FuncAnimation
 import pandas as pd
@@ -10,6 +20,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import copy
 from astropy.time import Time
+
+#Colormap to use
+CMAP = 'hot_r'
+
 
 #Reading in government tables.
 allpop = pd.read_csv('geo_pop_data/county_pop.csv') 
@@ -44,13 +58,13 @@ covid.drop(columns=['UID','iso2','iso3','code3','Combined_Key',
            inplace=True)
 
 covid = covid.diff(axis=1)
+covid[covid<0.] = 0.  #Removing negative values
 
 
 dt_idx = pd.to_datetime(covid.columns)
 covid = covid.T
 covid = covid.reindex(dt_idx)
 covid = covid.iloc[5:].resample('W',label='right',closed='right').sum()
-#covid = covid.diff()
 covid.rename(index=str,inplace=True)
 covid = covid.T
 covid = pd.concat([countynames,covid],axis=1,ignore_index=False)
@@ -59,6 +73,7 @@ data = data.merge(covid,on='FIPS')
 
 data[data.columns[5:]] = 1000*data[data.columns[5:]].div(data.POPESTIMATE2019,axis=0)
 
+#Setting the map projection
 data.to_crs('EPSG:2163',inplace=True)
 
 
@@ -67,30 +82,29 @@ fig,ax = plt.subplots(1,figsize=(8,5))
 ax.axis('off')
 ax.set_xlim(-2.2e6,2.7e6)
 ax.set_ylim(-2.3e6,9e5)
-vmin,vmax = -250,250
 date_text = ax.text(0.5,0.95,'',transform=ax.transAxes,
                     horizontalalignment='center',fontsize=16)
 
+#Adding a colorbar
+sm = plt.cm.ScalarMappable(cmap=CMAP,
+                           norm=plt.Normalize(vmin=0,vmax=100))
+cbar = fig.colorbar(sm,orientation='horizontal',label='Percentile',
+                    fraction=0.025,pad=0.1,aspect=30)
+cbar.set_ticks([0,20,40,60,80,100])
+
+#Function that mekes cloropleth
 def update_map(col):
 
-
-    #sm = plt.cm.ScalarMappable(cmap=cmap,
-    #                           norm=plt.Normalize(vmin=vmin,vmax=vmax)
-    #                           )
-    #sm.set_array([])
-    
-    #cbar = fig.colorbar(sm)
-    #cbar.set_ticks([])
-    
     dt1 = Time.now()
-    data.plot(column=col,cmap='Reds', scheme='percentiles',
-              classification_kwds={'pct':[90,95,100]},
+    fig1 = data.plot(column=col,cmap=CMAP,scheme='percentiles',
+              classification_kwds={'pct':[0,20,40,60,70,80,100]},
               linewidth=0.25,ax=ax,edgecolor='0.5')
     date_text.set_text(f'{col[:10]}')
     print(f'{col[:10]} {(Time.now()-dt1).sec:5.2f}')
-    
 
+#Animation class
 ani = FuncAnimation(fig,update_map,data.columns[5:],interval=0,
                     cache_frame_data=False)
 
-ani.save('plots/worst_counties.mp4',writer='ffmpeg',fps=2,dpi=150)
+#Saving the movie
+ani.save('plots/worst_counties.mp4',writer='ffmpeg',fps=1,dpi=200)
