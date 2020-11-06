@@ -51,7 +51,7 @@ def plot_by_region(region, data_world, data_usa, pops_world, pops_usa,
     
     fig, ax = plt.subplots(1, 1, figsize=(10,5))
     ax.bar(data_region.index, data_region, color=bar_c, alpha=alpha)
-    ax.plot(data_region.rolling(5, center=True, min_periods=2).mean(), 
+    ax.plot(data_region.rolling(7, center=True, min_periods=2).mean(), 
                 c=contrast_c, lw=2)
     lastval = int(data_region[-1])
     future1day = data_region.index[-1] + datetime.timedelta(days=1)
@@ -89,7 +89,7 @@ def plot_by_region(region, data_world, data_usa, pops_world, pops_usa,
     if not os.path.exists(outdir):
         os.mkdir(outdir)
     outfilename = os.path.join(outdir, f"{region}_new_{lbl}.png")
-    plt.savefig(outfilename, bbox_index='tight')
+    plt.savefig(outfilename, bbox_index='tight', dpi=200)
     print(f"Saved {outfilename}")
 
 if __name__ == "__main__":

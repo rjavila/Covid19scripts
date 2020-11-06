@@ -17,14 +17,17 @@ A movie writer (e.g. ffmpeg) is also needed to create the movie.
 
 ## Plot types
 
-### Interactive plot
-Generate an interactive Bokeh plot to display the daily case numbers for 
-USA states. From the `Covid19scripts/covidplots` directory:
+### Interactive plots
+Generate interactive Bokeh plots to display the daily case numbers for 
+USA states or world. From the `Covid19scripts/covidplots` directory:
 
 ```
 bokeh serve --show usa_interactive
 ```
-
+or
+```
+bokeh serve --show world_interactive
+```
 ### Grid plots
 Generate figures in a grid format with bar plots of new daily cases or deaths
 for the following regions:

@@ -36,7 +36,7 @@ STATES = ['Alabama','Alaska','Arizona','Arkansas','California',
           'North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania',
           'Rhode Island','South Carolina','South Dakota','Tennessee',
           'Texas','Utah','Vermont','Virginia','Washington',
-          'West Virginia','Wisconsin','Wyoming']
+          'West Virginia','Wisconsin','Wyoming','District of Columbia']
 all_regions = STATES
 all_regions.sort()
 # Split into two lists so that we can have two columns of checkboxes
