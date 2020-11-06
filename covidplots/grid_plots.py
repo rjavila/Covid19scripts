@@ -167,30 +167,31 @@ def grid_plot(data, region, outdir="plots", deaths=False):
             ax.set_xlim(left=datetime.date(2020, 2, 21))
             # Get the maximum number of intervals/10,000s of cases so far
             if lbl == "deaths":
-                interval = 20000
+                interval = 40000
                 unit = 1000
                 vline_lbl = "k"
+                vline_lbl_tiny = "k"
             else:
                 interval = 1000000
                 unit = 1000000
                 vline_lbl = " mil"
+                vline_lbl_tiny = "m"
             maxinterval = data[statenations[i]][-1] - data[statenations[i]][-1] % interval
-            intervals = np.arange(interval, maxinterval+interval, interval)
-            # The indices for the next entry after each million cases
+            intervals = np.concatenate((np.array([100]),
+                                        np.arange(interval, maxinterval+interval, interval)))
+            # The indices for the next entry after each interval unit
             intervals_inds = [np.argmax(data[statenations[i]] > x) for x in intervals]
-            # Get the index corresponding to the next entry after 100 cases
-            cases100_i = np.argmax(data[statenations[i]] > 100)
             # Vertical lines will be put at 100 cases and each million afterward
             # The last index is for marking the last date, but no vline
-            vline_inds = [cases100_i] + intervals_inds + [len(dailydata)-1]
+            vline_inds = intervals_inds + [len(dailydata)-1]
+            ndays = np.array(vline_inds)[1:] - np.array(vline_inds)[:-1]
             # Get the transformation function the data coordinates in X and
             # axis fraction in Y
             trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
             # Make one continuous line from 100 cases to last date
-            ax.plot([dailydata.index[[cases100_i]], dailydata.index[[-1]]],
+            ax.plot([dailydata.index[[intervals_inds[0]]], dailydata.index[[-1]]],
                     [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
                     clip_on=False)
-            
             for j in range(len(vline_inds)):
                 ant_kwargs = {"size": 8, "color": OUTSIDE_PLOT_C, "va": "center", "ha": "center",
                               "xycoords": ("data", "axes fraction")}
@@ -198,29 +199,39 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                 ax.annotate("|", xy=(dailydata.index[[vline_inds[j]]], 1.03), 
                             **ant_kwargs)
 
-                # Annotate how many days elapsed since last integer million cases
-                # Extra annotation at the end for last integer million -> now
-                if j != 0: # j=0 corresponds to 100 cases
-                    ndays = vline_inds[j] - vline_inds[j-1]
-                    middle_i = vline_inds[j] - int(ndays/2)
-                    if ndays > 10: # if <10, not enough room for full label
-                        elapsed_lbl = f"{ndays} days"
-                    else:
-                        elapsed_lbl = f"{ndays}d"
-                    ax.annotate(elapsed_lbl, (dailydata.index[[middle_i]], 1.05), 
-                        xycoords= ("data", "axes fraction"), ha="center", 
-                        color=OUTSIDE_PLOT_C, style="italic")
-                
                 # If on the last index (last entry in dataset), we don't plot the vline
                 if j == len(vline_inds)-1:
                     continue
-                # Make a vertical line in the plot
+                
+                # Annotate how many days elapsed since last integer million cases
+                # Extra annotation at the end for last integer million -> now
+                middle_i = vline_inds[j] + int(ndays[j]/2)
+                if ndays[j] > 15: # if <10, not enough room for full label
+                    elapsed_lbl = f"{ndays[j]} days"
+                elif ndays[j] >= 5:
+                    elapsed_lbl = f"{ndays[j]}d"
+                elif ndays[j] >= 3:
+                    elapsed_lbl = f"{ndays[j]}"
+                else:
+                    elapsed_lbl = ""
+                ax.annotate(elapsed_lbl, (dailydata.index[[middle_i]], 1.05), 
+                    xycoords= ("data", "axes fraction"), ha="center", 
+                    color=OUTSIDE_PLOT_C, style="italic")
+                
+                # Make a vertical line in the plot.
+                # Annotate how many cases/deaths occurred in the interval period.
                 ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, ls="dotted", 
                            alpha=0.7, zorder=0)
                 if j == 0:
-                    lab = "100"
+                    number = "100"
                 else:
-                    lab = f"{intervals[j-1]/unit:.0f}{vline_lbl}"
+                    number = f"{intervals[j]/unit:.0f}"
+                if ndays[j] > 10 or j == len(vline_inds)-2:
+                    lab = f"{number}{vline_lbl}"
+                else:
+                    lab = f"{number}{vline_lbl_tiny}"
+                    if ndays[j] < 7:
+                        lab = f"{number}"
                 ax.annotate(lab, 
                             (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=12), .93),
                             xycoords=("data", "axes fraction"), 
@@ -253,8 +264,9 @@ def grid_plot(data, region, outdir="plots", deaths=False):
         us_ymax = axes[0].get_ylim()[1]
         eu_ymax = axes[1].get_ylim()[1]
         max_max = max(us_ymax, eu_ymax)
-        axes[0].set_ylim(top=max_max)
-        axes[1].set_ylim(top=max_max)
+        max_max_buffer = max_max + (0.05 * max_max)
+        axes[0].set_ylim(top=max_max_buffer)
+        axes[1].set_ylim(top=max_max_buffer)
 
     plt.suptitle(f'New daily {lbl}\n{dailydata.index[-1]:%B %d, %Y}',
                  fontsize='x-large', y=1.01)
