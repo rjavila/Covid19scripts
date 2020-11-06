@@ -45,7 +45,7 @@ def fix_jhu_df(jhu_df):
     return jhu_df
 
 
-def census_continents(filename="Census_data_2020_world_regions.csv"):
+def census_continents(filename="geo_pop_data/Census_data_2020_world_regions.csv"):
     """
     Determine continents for each country that has JHU Covid data.
     Args:

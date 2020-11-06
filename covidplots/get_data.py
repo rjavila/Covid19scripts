@@ -75,7 +75,7 @@ def read_data(filename, region):
         b = a.groupby('Country/Region').sum()
         b.drop(columns=['Lat','Long'], inplace=True)
         
-        pops0 = pd.read_csv("Census_data_2020_world_regions.csv", skiprows=1)
+        pops0 = pd.read_csv("geo_pop_data/Census_data_2020_world_regions.csv", skiprows=1)
         pops0.drop_duplicates(subset="Country", inplace=True) 
         pops0.drop(columns=['Region', 'Year', 'Area (sq. km.)',
                'Density (persons per sq. km.)'], inplace=True)
