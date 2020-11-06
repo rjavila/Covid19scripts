@@ -1,0 +1,4 @@
+**.DS_Store
+**__pycache__/
+covidplots/covid_data/
+covidplots/plots/

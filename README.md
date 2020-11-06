@@ -8,6 +8,13 @@ directory execute:
 pip install .
 ```
 
+To make the movie of the worst counties, two additional packages are required:
+
+- geopandas
+- mapclassify
+
+A movie writer (e.g. ffmpeg) is also needed to create the movie. 
+
 ## Plot types
 
 ### Interactive plots

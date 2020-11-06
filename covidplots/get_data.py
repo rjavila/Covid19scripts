@@ -7,7 +7,7 @@ from covidplots.continents import fix_jhu_df, fix_census_df
 
 JHU_URL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series"
 
-def download_data(region, deaths=False, url=JHU_URL, outdir="data"):
+def download_data(region, deaths=False, url=JHU_URL, outdir="covid_data"):
     """
     Download CSV files from JHU.
     Args:
@@ -68,7 +68,7 @@ def read_data(filename, region):
                     'Country_Region','Lat','Long_','Combined_Key'], 
                     inplace=True)
         b = a.groupby('Province_State').sum()
-        pops0 = pd.read_csv('nst-est2019-01.csv',index_col='State')
+        pops0 = pd.read_csv('geo_pop_data/nst-est2019-01.csv',index_col='State')
         pops = pops0.T
     else:
         a = pd.read_csv(filename)
@@ -76,6 +76,7 @@ def read_data(filename, region):
         b.drop(columns=['Lat','Long'], inplace=True)
         
         pops0 = pd.read_csv("Census_data_2020_world_regions.csv", skiprows=1)
+        pops0.drop_duplicates(subset="Country", inplace=True) 
         pops0.drop(columns=['Region', 'Year', 'Area (sq. km.)',
                'Density (persons per sq. km.)'], inplace=True)
         pops0.set_index("Country", inplace=True)
