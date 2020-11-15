@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.transforms as transforms
