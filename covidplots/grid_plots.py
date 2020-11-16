@@ -223,16 +223,16 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                 # Annotate how many cases/deaths occurred in the interval period.
                 ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, ls="dotted", 
                            alpha=0.7, zorder=0)
-                if j == 0:
-                    number = "100"
-                else:
-                    number = f"{intervals[j]/unit:.0f}"
+                
+                number = f"{intervals[j]/unit:.0f}"
                 if ndays[j] > 10 or j == len(vline_inds)-2:
                     lab = f"{number}{vline_lbl}"
                 else:
                     lab = f"{number}{vline_lbl_tiny}"
                     if ndays[j] < 7:
                         lab = f"{number}"
+                if j == 0:
+                    lab = "100"
                 ax.annotate(lab, 
                             (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=12), .93),
                             xycoords=("data", "axes fraction"), 
@@ -244,7 +244,7 @@ def grid_plot(data, region, outdir="plots", deaths=False):
             ant_ylo = 0.75
             ant_yhi = ant_ylo + 0.09
             # Put a box around the Total and Last annotations
-            box = Rectangle((ant_x-0.003, ant_ylo-0.020), .137, .16, transform=ax.transAxes,
+            box = Rectangle((ant_x-0.003, ant_ylo-0.020), .15, .16, transform=ax.transAxes,
                 edgecolor=BOX_EDGE_C, facecolor=BOX_FACE_C, alpha=0.5)
             ax.add_patch(box)
             ax.annotate(f"Total: {total:,}", (ant_x, ant_yhi), va="center", ha="left", 
