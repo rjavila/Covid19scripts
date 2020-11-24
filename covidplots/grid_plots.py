@@ -206,10 +206,12 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                 
                 # Annotate how many days elapsed since last integer million cases
                 # Extra annotation at the end for last integer million -> now
+                # Depending on number of days in the interval, the time unit
+                # will be days, d, no unit at all, or no number at all
                 middle_i = vline_inds[j] + int(ndays[j]/2)
-                if ndays[j] > 15: # if <10, not enough room for full label
+                if ndays[j] > 15: 
                     elapsed_lbl = f"{ndays[j]} days"
-                elif ndays[j] >= 5:
+                elif ndays[j] >= 6:
                     elapsed_lbl = f"{ndays[j]}d"
                 elif ndays[j] >= 3:
                     elapsed_lbl = f"{ndays[j]}"
@@ -223,14 +225,25 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                 # Annotate how many cases/deaths occurred in the interval period.
                 ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, ls="dotted", 
                            alpha=0.7, zorder=0)
-                
+               
+                # Make the label for the vline (e.g. 8 mil or 200k)
+                # Depending on the number of days in the interval, the unit
+                # label may change
                 number = f"{intervals[j]/unit:.0f}"
-                if ndays[j] > 10 or j == len(vline_inds)-2:
-                    lab = f"{number}{vline_lbl}"
-                else:
-                    lab = f"{number}{vline_lbl_tiny}"
-                    if ndays[j] < 7:
+                if len(number) == 1:
+                    if ndays[j] > 10 or j == len(vline_inds)-2:
+                        lab = f"{number}{vline_lbl}"
+                    elif ndays[j] < 7:
                         lab = f"{number}"
+                    else:
+                        lab = f"{number}{vline_lbl_tiny}"
+                else:
+                    if ndays[j] > 14 or j == len(vline_inds)-2:
+                        lab = f"{number}{vline_lbl}"
+                    elif ndays[j] < 11:
+                        lab = f"{number}"
+                    else:
+                        lab = f"{number}{vline_lbl_tiny}"
                 if j == 0:
                     lab = "100"
                 ax.annotate(lab, 
