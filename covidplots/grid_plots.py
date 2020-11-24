@@ -147,13 +147,13 @@ def grid_plot(data, region, outdir="plots", deaths=False):
         
         ax.set_xlim(left=datetime.date(2020, 2, 27))
         
-        plt.gcf().autofmt_xdate(rotation=60, ha="center")
+        plt.gcf().autofmt_xdate(rotation=30, ha="center")
 
-        ax.tick_params('both', labelsize=labelsize, length=2)
+        ax.tick_params('both', labelsize=labelsize, length=3)
         ax.get_yaxis().set_major_formatter(
             matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
         ax.yaxis.set_ticks_position('both')
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
         ax.xaxis.set_major_locator(months)
         ax.yaxis.get_major_ticks()[0].label1.set_visible(False)
         ax.yaxis.set_major_locator(plt.MaxNLocator(5))
