@@ -23,6 +23,22 @@ from covidplots import get_data
 from covidplots.continents import census_continents
 
 #-----------------------------------------------------------------------------#
+# Define constants
+
+# Worst X number of countries
+worstx = 5
+
+# Define per capita number
+capita = 1000000
+
+# Define list of colors to use  
+colors_l = Category20[20] + Category20b[20] +  Category20c[20]
+
+# Set x limits to be March 1 -> now + 1 day
+xleft = datetime.datetime(2020, 3, 1)
+xright = datetime.datetime.now() + datetime.timedelta(days=1)
+
+#-----------------------------------------------------------------------------#
 # Read and handle data
 
 # Get continent definitions for each country
@@ -38,24 +54,11 @@ data = data.diff()
 # Use 7 day average as the defacto data
 data = data.rolling(7, center=True, min_periods=2).mean()
 
+# Calculate per capita values
+data_capita = capita * data.div(pops.iloc[0], axis="columns")
+
 # Add the index (date) as a column for convenience
 data["date"] = data.index
-
-#-----------------------------------------------------------------------------#
-# Define constants
-
-# Worst X number of countries
-worstx = 5
-
-# Define per capita number
-capita = 1000000
-
-# Define list of colors to use  
-colors_l = Category20[20] + Category20b[20] +  Category20c[20]
-
-# Set x limits to be March 1 -> now + 1 day
-xleft = datetime.datetime(2020, 3, 1)
-xright = datetime.datetime.now() + datetime.timedelta(days=1)
 
 #-----------------------------------------------------------------------------#
 
@@ -136,6 +139,7 @@ def make_plot(src):
     p = figure(plot_width = 1500, plot_height = 1000, 
               title = 'New Daily Covid-19 Cases, 7-day Average',
               x_axis_type="datetime", x_range=(xleft, xright))
+    p.sizing_mode = 'scale_both'
     # Create a line for each region
     p.multi_line(source=src, xs="xs", ys="ys", color="colors", 
                  line_width=3, legend_field="names")              
@@ -226,7 +230,7 @@ def unselect_all_update():
 
 #-----------------------------------------------------------------------------#
 
-def get_worst(cont, worstx=worstx):
+def get_worst(cont, data=data, worstx=worstx):
     """
     Get the worst X regions (by default, 5).
     Args:
@@ -249,12 +253,18 @@ def worst_update():
     Select worst regions for display. Worst is defined as highest number of 
     cases on the last available date.
     """
+    
+    # Corresponds to unscaled
+    if radio_buttons.active == 0:
+        worstinds_d_use = worstinds_d
+    else: # Per capita
+        worstinds_d_use = worstinds_capita_d
     tab_title = get_active_tab()
     if tab_title == "All":
         for ms in multi_selects:
             ms.value = []
-    checkbox_d[tab_title][0].active = worstinds_d[tab_title][0]
-    checkbox_d[tab_title][1].active = worstinds_d[tab_title][1]
+    checkbox_d[tab_title][0].active = worstinds_d_use[tab_title][0]
+    checkbox_d[tab_title][1].active = worstinds_d_use[tab_title][1]
 
 #-----------------------------------------------------------------------------#
 
@@ -350,6 +360,7 @@ all_regions_d = {}
 checkbox_d = {}
 textinput_d = {}
 worstinds_d = {}
+worstinds_capita_d = {}
 multi_selects = []
 srcs = {}
 tabs = []
@@ -369,12 +380,17 @@ for cont in all_conts:
 
     # Get worst countries
     if cont == "All":
-        worstnames = get_worst(cont, 9)
+        worstnames = get_worst(cont, data, 9)
+        worstnames_capita = get_worst(cont, data_capita, 9)
     else: 
-        worstnames = get_worst(cont) 
+        worstnames = get_worst(cont, data, worstx) 
+        worstnames_capita = get_worst(cont, data_capita, worstx) 
     worstinds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in worstnames]
     worstinds2 = [x for x in range(len(all_regions2)) if all_regions2[x] in worstnames]
+    worstinds1_capita = [x for x in range(len(all_regions1)) if all_regions1[x] in worstnames_capita]
+    worstinds2_capita = [x for x in range(len(all_regions2)) if all_regions2[x] in worstnames_capita]
     worstinds_d[cont] = [worstinds1, worstinds2]
+    worstinds_capita_d[cont] = [worstinds1_capita, worstinds2_capita]
 
     if cont == "All":
         continue

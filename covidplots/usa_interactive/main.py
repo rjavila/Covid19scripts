@@ -63,12 +63,18 @@ data = data.diff()
 # Use 7 day average as the defacto data
 data = data.rolling(7, center=True, min_periods=2).mean()
 
-# Sort and determine worst 9 states
+# Sort and determine worst 9 states, both raw and per capita
 data_sorted = data.T.sort_values(data.index[-1], ascending=False).T
 worst9 = data_sorted.iloc[:, :9] 
 worst9names = worst9.columns.values
 worst9inds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in worst9names]
 worst9inds2 = [x for x in range(len(all_regions2)) if all_regions2[x] in worst9names]
+data_capita = CAPITA * data.div(pops.iloc[0], axis="columns")
+data_capita_sorted = data_capita.T.sort_values(data_capita.index[-1], ascending=False).T
+worst9_capita = data_capita_sorted.iloc[:, :9] 
+worst9names_capita = worst9_capita.columns.values
+worst9inds1_capita = [x for x in range(len(all_regions1)) if all_regions1[x] in worst9names_capita]
+worst9inds2_capita = [x for x in range(len(all_regions2)) if all_regions2[x] in worst9names_capita]
 
 # Add the index (date) as a column for convenience
 data["date"] = data.index
@@ -152,6 +158,7 @@ def make_plot(src):
     p = figure(plot_width = 1500, plot_height = 1000, 
               title = 'New Daily Covid-19 Cases, 7-day Average',
               x_axis_type="datetime", x_range=(xleft, xright))
+    p.sizing_mode = 'scale_both'
     # Create a line for each region
     p.multi_line(source=src, xs="xs", ys="ys", color="colors", 
                  line_width=3, legend_field="names")              
@@ -206,13 +213,19 @@ def worst9_update():
     Select worst 9 regions for display. Worst is defined as highest number of 
     cases on the last available date.
     """
-    region_selection1.active = worst9inds1
-    region_selection2.active = worst9inds2
+    # Corresponds to unscaled
+    if radio_buttons.active == 0:
+        region_selection1.active = worst9inds1
+        region_selection2.active = worst9inds2
+    # Corresponds to per capita
+    else:
+        region_selection1.active = worst9inds1_capita
+        region_selection2.active = worst9inds2_capita
 
 #-----------------------------------------------------------------------------#
 
 # Radio button group for selecting unscaled vs per capita
-radio_buttons = RadioButtonGroup(labels=["Unscaled", "Per 100000"], active=0, 
+radio_buttons = RadioButtonGroup(labels=["Unscaled", "Per 100,000"], active=0, 
                                  css_classes=["custom_button"])
 radio_buttons.on_change("active", update_plot)
 
