@@ -55,7 +55,7 @@ LATIN_COUNTRIES = ['Argentina','Belize','Bolivia','Brazil','Chile','Colombia',
                    'El Salvador','Guatemala','Honduras','Mexico','Nicaragua',
                    'Panama','Paraguay','Peru','Uruguay','Venezuela']
 
-def grid_plot(data, region, outdir="plots", deaths=False):
+def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
     """
     Make subplot grid plots for each state/country of interest in list.
     Args:
@@ -103,7 +103,7 @@ def grid_plot(data, region, outdir="plots", deaths=False):
         data["EU"] = data.loc[:,EU_COUNTRIES].sum(axis=1)
         dailydata = data.diff()
         subplots = (2, 1)
-        figsize = (12, 10)
+        figsize = (15, 11)
         lw = 1.5
         labelsize = "medium"
         fontsize = "large"
@@ -190,19 +190,20 @@ def grid_plot(data, region, outdir="plots", deaths=False):
             # axis fraction in Y
             trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
             # Make one continuous line from 100 cases to last date
-            ax.plot([dailydata.index[[intervals_inds[0]]], dailydata.index[[-1]]],
+            ax.plot([dailydata.index[[intervals_inds[0]]], dailydata.index[[vline_inds[-2]]]],
                     [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
                     clip_on=False)
             for j in range(len(vline_inds)):
+                # If on the last index (last entry in dataset), we don't plot the vline
+                # or little | symbol
+                if j == len(vline_inds)-1:
+                    continue
+                
                 ant_kwargs = {"size": 8, "color": OUTSIDE_PLOT_C, "va": "center", "ha": "center",
                               "xycoords": ("data", "axes fraction")}
                 # This makes the | symbol at the end of each time segment
                 ax.annotate("|", xy=(dailydata.index[[vline_inds[j]]], 1.03), 
                             **ant_kwargs)
-
-                # If on the last index (last entry in dataset), we don't plot the vline
-                if j == len(vline_inds)-1:
-                    continue
                 
                 # Annotate how many days elapsed since last integer million cases
                 # Extra annotation at the end for last integer million -> now
@@ -230,6 +231,7 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                 # Depending on the number of days in the interval, the unit
                 # label may change
                 number = f"{intervals[j]/unit:.0f}"
+                ant_kwargs = {}
                 if len(number) == 1:
                     if ndays[j] > 10 or j == len(vline_inds)-2:
                         lab = f"{number}{vline_lbl}"
@@ -242,14 +244,18 @@ def grid_plot(data, region, outdir="plots", deaths=False):
                         lab = f"{number}{vline_lbl}"
                     elif ndays[j] < 11:
                         lab = f"{number}"
-                    else:
+                        if ndays[j] < 5:
+                            ant_kwargs = {"size": 8}
+                        #if ndays[j] < 7:
+                        #    ant_kwargs = {"size": 8}
+                    elif ndays[j] :
                         lab = f"{number}{vline_lbl_tiny}"
                 if j == 0:
                     lab = "100"
                 ax.annotate(lab, 
-                            (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=12), .93),
+                            (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=6), .93),
                             xycoords=("data", "axes fraction"), 
-                            style="italic", color=VLINE_C)
+                            style="italic", color=VLINE_C, **ant_kwargs)
             
             # Define axis fraction coords for the Total and Last annotations
             # and the box surrounding them
@@ -270,8 +276,12 @@ def grid_plot(data, region, outdir="plots", deaths=False):
             # and write a title
             eu_usa_pops = {"US": 328, "EU": 445} 
             tester = "US"
-            ax.set_title(f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million", 
-                loc="left", pad=27, fontsize=fontsize)
+            if deaths is False:
+                infected = round((total / (eu_usa_pops[statenations[i]] * 1e6)) * 100.)
+                lab = f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million ({infected}% infected)"
+            else:
+                lab = f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million ({mort[statenations[i]]}% mortality)"
+            ax.set_title(lab, loc="left", pad=27, fontsize=fontsize)
    
     if region == "eu_vs_usa": 
         # Set both US and EU ylim maximum to the same value 
@@ -287,6 +297,28 @@ def grid_plot(data, region, outdir="plots", deaths=False):
     outfilename = os.path.join(outdir, filename)
     plt.savefig(outfilename, bbox_inches='tight')
     print(f"Saved {outfilename}")
+
+def mortality_rate(statenation, d_data, c_data):
+    """
+    Determine the mortality rate for a given state or country.
+    Args:
+        statenation (str): Name of state or country.
+        d_data (`:obj:pd.dataframe`): Deaths data.
+        c_data (`:obj:pd.dataframe`): Cases data.
+    Returns:
+        mort (int): Mortality rate.
+    """
+
+    if statenation == "EU": 
+        d_data["EU"] = d_data.loc[:,EU_COUNTRIES].sum(axis=1)
+        c_data["EU"] = c_data.loc[:,EU_COUNTRIES].sum(axis=1)
+    d_dailydata = d_data.diff()
+    c_dailydata = c_data.diff()
+    c_total = int(c_dailydata[statenation].sum())
+    d_total = int(d_dailydata[statenation].sum())
+    mort = round((d_total / c_total) * 100.)
+
+    return mort
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -309,4 +341,11 @@ if __name__ == "__main__":
 
     for item in regions:
         data, pops = get_data.get_data(item, deaths=args.deaths)
-        grid_plot(data, item, deaths=args.deaths)
+        if item == "eu_vs_usa" and args.deaths is True:
+            data2, pops2 = get_data.get_data(item, deaths=False)
+            usa_mort = mortality_rate("US", data, data2)
+            eu_mort = mortality_rate("EU", data, data2)
+            mort = {"US": usa_mort, "EU": eu_mort}
+            grid_plot(data, item, deaths=args.deaths, mort=mort)
+        else:
+            grid_plot(data, item, deaths=args.deaths)
