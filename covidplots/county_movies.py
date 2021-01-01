@@ -1,8 +1,12 @@
 '''
 Script to make a movie showing the weekly progression of COVID on 
-a county level. 
-The weekly cases by population, are broken down into nationwide 
-percentiles, and shown on a map.  
+a county level.
+
+Using the percentile option, the weekly cases by population, are broken
+down into nationwide percentiles, and shown on a map.  
+
+Using the percapita option, the weekly cases by population, mapped by  
+number of cases per 1000 people.  
 
 This script takes the US county shapefiles and population data and 
 merges them into a single geopandas dataframe. This is then combined 
@@ -25,7 +29,9 @@ from astropy.time import Time
 import sys
 
 #Colormap to use
-CMAP = 'hot_r'
+CMAP = 'viridis_r'
+VMIN = 0.001
+VMAX = 50
 
 
 def get_data():
@@ -109,7 +115,7 @@ def fig_setup(figtype):
         cbar = fig.colorbar(sm,orientation='horizontal',label='Cases per 1000',
                             fraction=0.025,pad=0.1,aspect=30)
 
-    return fig
+    return fig,ax,date_text
 
 
 #Function that mekes cloropleth
@@ -118,7 +124,7 @@ def update_percentile(col):
     dt1 = Time.now()
     fig1 = data.plot(column=col,cmap=CMAP,scheme='percentiles',
               classification_kwds={'pct':[0,20,40,60,70,80,100]},
-              linewidth=0.25,ax=ax,edgecolor='0.5')
+              linewidth=0.25,ax=ax1,edgecolor='0.5')
     date_text.set_text(f'{col[:10]}')
     print(f'{col[:10]} {(Time.now()-dt1).sec:5.2f}')
 
@@ -127,7 +133,7 @@ def update_percapita(col):
     dt1 = Time.now()
     fig1 = data.plot(column=col,cmap=CMAP,
               norm=colors.LogNorm(vmin=VMIN,vmax=VMAX),
-              linewidth=0.25,ax=ax,edgecolor='0.5')
+              linewidth=0.25,ax=ax2,edgecolor='0.5')
     date_text.set_text(f'{col[:10]}')
     print(f'{col[:10]} {(Time.now()-dt1).sec:5.2f}')
 
@@ -152,19 +158,19 @@ if __name__ == "__main__":
 
     if args.percentile:
 
-        fig1 = fig_setup('percentile')
+        fig1,ax1,date_text = fig_setup('percentile')
         ani1 = FuncAnimation(fig1,update_percentile,data.columns[5:],
                              interval=0,cache_frame_data=False)
         ani1.save('plots/counties_worst.mp4',writer='ffmpeg',
                   fps=1,dpi=200)
-        fig1.close()
+        plt.close(fig1)
 
     if args.percentile:
 
-        fig2 = fig_setup('percapita')
+        fig2,ax2,date_text = fig_setup('percapita')
         ani2 = FuncAnimation(fig2,update_percapita,data.columns[5:],
                              interval=0,cache_frame_data=False)
         ani2.save('plots/counties_percapita.mp4',writer='ffmpeg',
                   fps=1,dpi=200)
-        fig2.close()
+        plt.close(fig2)
 
