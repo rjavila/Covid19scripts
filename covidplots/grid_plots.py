@@ -147,7 +147,7 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         
         ax.set_xlim(left=datetime.date(2020, 2, 27))
         
-        plt.gcf().autofmt_xdate(rotation=30, ha="center")
+        plt.gcf().autofmt_xdate(rotation=45, ha="center")
 
         ax.tick_params('both', labelsize=labelsize, length=3)
         ax.get_yaxis().set_major_formatter(

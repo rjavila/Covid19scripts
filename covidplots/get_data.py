@@ -45,7 +45,7 @@ def download_data(region, deaths=False, url=JHU_URL, outdir="covid_data"):
             os.remove(outfilename)
 
     wget.download(os.path.join(url, filename), outfilename)
-    print(f"\nDownloaded {outfilename}")
+    print(f"\n ⬇️  Downloaded {outfilename}")
 
     return outfilename
 
