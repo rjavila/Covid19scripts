@@ -28,13 +28,14 @@ from copy import copy
 from astropy.time import Time
 import sys
 
+from get_data import download_data
 #Colormap to use
 CMAP = 'viridis_r'
 VMIN = 0.001
 VMAX = 50
 
 
-def get_data():
+def prepare_data():
     #Reading in government tables.
     allpop = pd.read_csv('geo_pop_data/county_pop.csv') 
     map_df = gpd.read_file('geo_pop_data/cb_2019_us_county_500k.shp')
@@ -151,7 +152,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.percentile or args.percapita:
-        data = get_data()
+        dowload_status = download_data('usa')
+        data = prepare_data()
     else:
         sys.exit('Please choose at least one of "percentile" and "percapita" to plot.')
 
@@ -165,7 +167,7 @@ if __name__ == "__main__":
                   fps=1,dpi=200)
         plt.close(fig1)
 
-    if args.percentile:
+    if args.percapita:
 
         fig2,ax2,date_text = fig_setup('percapita')
         ani2 = FuncAnimation(fig2,update_percapita,data.columns[5:],
