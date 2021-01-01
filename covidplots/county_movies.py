@@ -109,10 +109,6 @@ def fig_setup(figtype):
         cbar = fig.colorbar(sm,orientation='horizontal',label='Cases per 1000',
                             fraction=0.025,pad=0.1,aspect=30)
 
-    else:
-
-        sys.exit('What did you do?')
-
     return fig
 
 
@@ -138,13 +134,37 @@ def update_percapita(col):
 
 if __name__ == "__main__":
 
-    parse = argpars.ArgumentParser()
-    parser.add_argument('--percentile',
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--percentile',action='store_true',
+           default=False,
+           help='Switch to plot percentile')
+    parser.add_argument('--percapita',action='store_true',
+           default=False,
+           help='Switch to plot per-capita')
     
-#Animation class
-ani = FuncAnimation(fig,update_map,data.columns[5:],interval=0,
-                    cache_frame_data=False)
+    args = parser.parse_args()
+
+    if args.percentile or args.percapita:
+        data = get_data()
+    else:
+        sys.exit('Please choose at least one of "percentile" and "percapita" to plot.')
 
 
-#Saving the movie
-ani.save('plots/worst_counties.mp4',writer='ffmpeg',fps=1,dpi=200)
+    if args.percentile:
+
+        fig1 = fig_setup('percentile')
+        ani1 = FuncAnimation(fig1,update_percentile,data.columns[5:],
+                             interval=0,cache_frame_data=False)
+        ani1.save('plots/counties_worst.mp4',writer='ffmpeg',
+                  fps=1,dpi=200)
+        fig1.close()
+
+    if args.percentile:
+
+        fig2 = fig_setup('percapita')
+        ani2 = FuncAnimation(fig2,update_percapita,data.columns[5:],
+                             interval=0,cache_frame_data=False)
+        ani2.save('plots/counties_percapita.mp4',writer='ffmpeg',
+                  fps=1,dpi=200)
+        fig2.close()
+
