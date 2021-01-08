@@ -103,10 +103,14 @@ def rainbow_text(x, y, strings, colors, styles=None, weights=None,
     else:
         t = None
 
-    if styles == None or isinstance(styles, str):
-        styles = ["normal" for x in strings]
-    if weights == None or isinstance(weights, str):
-        weights = ["normal" for x in strings]
+    if styles == None:
+        styles = "normal"
+    if isinstance(styles, str):
+        styles = [styles for x in strings]
+    if weights == None:
+        weights = "normal"
+    if isinstance(weights, str):
+        weights = [weights for x in strings]
     
     canvas = ax.figure.canvas
 
@@ -127,7 +131,7 @@ def rainbow_text(x, y, strings, colors, styles=None, weights=None,
             x = bbox.x1
         else:
             y = bbox.y1
-
+    return bbox
 
 def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
     """
@@ -210,12 +214,9 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
 
     for i,ax in enumerate(axes.flatten()):
         
-#        if region == "eu_vs_usa":
         ax.bar(dailydata.index, dailydata[statenations[i]], color=BAR_C, zorder=5)
         ax.plot(avg[statenations[i]], c=CONTRAST_C, lw=lw, zorder=10)
 
-        max_avg = max(avg[statenations[i]])
-        ax.set_ylim(0, max_avg+0.08*max_avg)
         total = int(dailydata[statenations[i]].sum())
         lastval = int(dailydata[statenations[i]][-1])
         avglastval = int(avg[statenations[i]][-1])
@@ -235,14 +236,13 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
 
         
         if region != "eu_vs_usa":
+            max_avg = max(avg[statenations[i]])
+            ax.set_ylim(0, max_avg+0.08*max_avg)
             ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
                 xycoords="axes fraction", size=fontsize)
-            words0 = "Last: "
-            words1 = f"{lastval:,}/"
-            words2 = f"{avglastval:,}"
-            words = [words0, words1, words2]
-            colors = ["black", "lightcoral", CONTRAST_C]
-            weights = ["normal", "normal", "bold"]
+            words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
+            colors = ["black", "lightcoral", "black", CONTRAST_C]
+            weights = ["normal", "normal", "normal", "bold"]
             rainbow_text(0.035, .9, words, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, zorder=15)
         else:
             ax.set_xlim(left=datetime.date(2020, 2, 21))
@@ -337,21 +337,29 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
                             xycoords=("data", "axes fraction"), 
                             style="italic", color=VLINE_C, **ant_kwargs)
             
+
             # Define axis fraction coords for the Total and Last annotations
             # and the box surrounding them
-            ant_x = 0.027
-            ant_ylo = 0.75
-            ant_yhi = ant_ylo + 0.09
-            # Put a box around the Total and Last annotations
-            box = Rectangle((ant_x-0.003, ant_ylo-0.020), .15, .16, transform=ax.transAxes,
-                edgecolor=BOX_EDGE_C, facecolor=BOX_FACE_C, alpha=0.5)
+            text_x0 = 0.027
+            text_x1 = [0]
+            text_y = 0.84
+            bbox = rainbow_text(text_x0, text_y, [f"Total: {total:,}"], ["black"], ax=ax, fig=fig, 
+                                tstring="axes", size=fontsize, styles="italic", ha="left",
+                                va="center")
+            text_x1.append(bbox.x1)
+            text_y = 0.75
+            words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
+            colors = ["black", "lightcoral", "black", CONTRAST_C]
+            weights = ["normal", "normal", "normal", "bold"]
+            bbox = rainbow_text(text_x0, text_y, words, colors, ax=ax, fig=fig, 
+                                tstring="axes", weights=weights, styles="italic", 
+                                size=fontsize, ha="left", va="center")
+            text_x1.append(bbox.x1)
+            max_x = max(text_x1)
+            box = Rectangle((text_x0-0.003, text_y-0.03), (max_x-text_x0)+0.006, .16, 
+                transform=ax.transAxes, edgecolor=BOX_EDGE_C, facecolor=BOX_FACE_C, alpha=0.5)
             ax.add_patch(box)
-            ax.annotate(f"Total: {total:,}", (ant_x, ant_yhi), va="center", ha="left", 
-                xycoords = "axes fraction", size=fontsize, style="italic")
-            ax.annotate(f"Last: {lastval:,}", (ant_x, ant_ylo), 
-                xycoords = "axes fraction", size=fontsize, style="italic",
-                color=CONTRAST_C)
-            
+
             # Define US and EU population (in units of intervals) by hand
             # and write a title
             eu_usa_pops = {"US": 328, "EU": 445} 
@@ -371,9 +379,9 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         axes[0].set_ylim(top=max_max_buffer)
         axes[1].set_ylim(top=max_max_buffer)
 
-    words = ["Last: ", "value/", "7-day average"]
-    colors = ["black", "lightcoral", CONTRAST_C]
-    weights = ["normal", "normal", "bold"]
+    words = ["Last: ", "value", "/", "7 day average"]
+    colors = ["black", "lightcoral", "black", CONTRAST_C]
+    weights = ["normal", "normal", "normal", "bold"]
     
     ax = plt.gca()
     canvas = ax.figure.canvas
