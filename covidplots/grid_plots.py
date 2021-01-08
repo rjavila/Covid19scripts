@@ -171,7 +171,7 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         statenations = STATES
         lw = 0.75
         labelsize = "xx-small"
-        fontsize = "small"
+        fontsize = "x-small"
         filename = f"states_new_{lbl}.pdf"
     elif region == "eu_vs_usa":
         data["EU"] = data.loc[:,EU_COUNTRIES].sum(axis=1)
@@ -214,7 +214,8 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         ax.bar(dailydata.index, dailydata[statenations[i]], color=BAR_C, zorder=5)
         ax.plot(avg[statenations[i]], c=CONTRAST_C, lw=lw, zorder=10)
 
-        ax.set_ylim(bottom=0)
+        max_avg = max(avg[statenations[i]])
+        ax.set_ylim(0, max_avg+0.08*max_avg)
         total = int(dailydata[statenations[i]].sum())
         lastval = int(dailydata[statenations[i]][-1])
         avglastval = int(avg[statenations[i]][-1])
@@ -231,6 +232,7 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         ax.xaxis.set_major_locator(months)
         ax.yaxis.get_major_ticks()[0].label1.set_visible(False)
         ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+
         
         if region != "eu_vs_usa":
             ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
@@ -241,10 +243,7 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
             words = [words0, words1, words2]
             colors = ["black", "lightcoral", CONTRAST_C]
             weights = ["normal", "normal", "bold"]
-            rainbow_text(0.035, .9, words, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize)
-            #ax.annotate(f"Last: {lastval:,}", (0.035, .9), 
-#                xycoords = "axes fraction", size=fontsize, style="italic",
-#                color=CONTRAST_C)
+            rainbow_text(0.035, .9, words, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, zorder=15)
         else:
             ax.set_xlim(left=datetime.date(2020, 2, 21))
             # Get the maximum number of intervals/10,000s of cases so far
