@@ -376,13 +376,12 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         eu_ymax = axes[1].get_ylim()[1]
         max_max = max(us_ymax, eu_ymax)
         max_max_buffer = max_max + (0.05 * max_max)
-        axes[0].set_ylim(top=max_max_buffer)
-        axes[1].set_ylim(top=max_max_buffer)
+        axes[0].set_ylim(0, max_max_buffer)
+        axes[1].set_ylim(0, max_max_buffer)
 
     words = ["Last: ", "value", "/", "7 day average"]
     colors = ["black", "lightcoral", "black", CONTRAST_C]
     weights = ["normal", "normal", "normal", "bold"]
-    
     ax = plt.gca()
     canvas = ax.figure.canvas
     t = fig.transFigure
