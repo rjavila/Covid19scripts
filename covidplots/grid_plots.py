@@ -269,7 +269,7 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
             # axis fraction in Y
             trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
             # Make one continuous line from 100 cases to last date
-            ax.plot([dailydata.index[[intervals_inds[0]]], dailydata.index[[vline_inds[-2]]]],
+            ax.plot([dailydata.index[[intervals_inds[0]]], dailydata.index[[vline_inds[-1]]]],
                     [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
                     clip_on=False)
             skip = False
