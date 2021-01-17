@@ -221,7 +221,6 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         lastval = int(dailydata[statenations[i]][-1])
         avglastval = int(avg[statenations[i]][-1])
         
-        ax.set_xlim(left=datetime.date(2020, 2, 27))
         
         plt.gcf().autofmt_xdate(rotation=45, ha="center")
 
@@ -234,10 +233,10 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         ax.yaxis.get_major_ticks()[0].label1.set_visible(False)
         ax.yaxis.set_major_locator(plt.MaxNLocator(5))
 
-        
         if region != "eu_vs_usa":
             max_avg = max(avg[statenations[i]])
             ax.set_ylim(0, max_avg+0.08*max_avg)
+            ax.set_xlim(datetime.date(2020, 2, 27))
             ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
                 xycoords="axes fraction", size=fontsize)
             words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
@@ -245,7 +244,7 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
             weights = ["normal", "normal", "normal", "bold"]
             rainbow_text(0.035, .9, words, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, zorder=15)
         else:
-            ax.set_xlim(left=datetime.date(2020, 2, 21))
+            ax.set_xlim(datetime.date(2020, 2, 21), dailydata.index[-1]+datetime.timedelta(days=7))
             # Get the maximum number of intervals/10,000s of cases so far
             if lbl == "deaths":
                 interval = 40000
@@ -273,6 +272,7 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
             ax.plot([dailydata.index[[intervals_inds[0]]], dailydata.index[[vline_inds[-2]]]],
                     [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
                     clip_on=False)
+            skip = False
             for j in range(len(vline_inds)):
                 # If on the last index (last entry in dataset), we don't plot the vline
                 # or little | symbol
@@ -304,7 +304,8 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
                 
                 # Make a vertical line in the plot.
                 # Annotate how many cases/deaths occurred in the interval period.
-                ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, ls="dotted", 
+                ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, 
+                           ls="dotted", 
                            alpha=0.7, zorder=0)
                
                 # Make the label for the vline (e.g. 8 mil or 200k)
@@ -312,7 +313,11 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
                 # label may change
                 number = f"{intervals[j]/unit:.0f}"
                 ant_kwargs = {}
-                if len(number) == 1:
+                time_off = 6
+                if skip == True:
+                    lab = ""
+                    skip = False
+                elif len(number) == 1:
                     if ndays[j] > 10 or j == len(vline_inds)-2:
                         lab = f"{number}{vline_lbl}"
                     elif ndays[j] < 7:
@@ -320,20 +325,26 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
                     else:
                         lab = f"{number}{vline_lbl_tiny}"
                 else:
-                    if ndays[j] > 14 or j == len(vline_inds)-2:
+                    if j == len(vline_inds)-2:
+                        lab = f"{number}{vline_lbl_tiny}"
+                    elif ndays[j] > 14:
                         lab = f"{number}{vline_lbl}"
                     elif ndays[j] < 11:
                         lab = f"{number}"
                         if ndays[j] < 5:
                             ant_kwargs = {"size": 8}
-                        #if ndays[j] < 7:
-                        #    ant_kwargs = {"size": 8}
-                    elif ndays[j] :
+                        elif ndays[j] < 6:
+                            ant_kwargs = {"size": 8.5}
+                        if number[0] == "2":
+                            time_off = -1
+                        else:
+                            time_off = -6
+                    else:
                         lab = f"{number}{vline_lbl_tiny}"
                 if j == 0:
                     lab = "100"
                 ax.annotate(lab, 
-                            (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=6), .93),
+                            (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=time_off), .93),
                             xycoords=("data", "axes fraction"), 
                             style="italic", color=VLINE_C, **ant_kwargs)
             
