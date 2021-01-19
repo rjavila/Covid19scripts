@@ -265,7 +265,6 @@ def jhu_countries():
  'Venezuela',
  'Vietnam',
  'West Bank and Gaza',
- 'Western Sahara',
  'Yemen',
  'Zambia',
  'Zimbabwe']

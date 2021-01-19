@@ -55,6 +55,84 @@ LATIN_COUNTRIES = ['Argentina','Belize','Bolivia','Brazil','Chile','Colombia',
                    'El Salvador','Guatemala','Honduras','Mexico','Nicaragua',
                    'Panama','Paraguay','Peru','Uruguay','Venezuela']
 
+# Taken from matplotlib, and modified 
+# https://matplotlib.org/3.1.0/gallery/text_labels_and_annotations/rainbow_text.html
+def rainbow_text(x, y, strings, colors, styles=None, weights=None,
+                 orientation='horizontal', ax=None, fig=None, 
+                 tstring="axes", **kwargs):
+    """
+    Take a list of *strings* and *colors* and place them next to each
+    other, with text strings[i] being shown in colors[i].
+
+    Parameters
+    ----------
+    x, y : float
+        Text position in data coordinates.
+    strings : list of str
+        The strings to draw.
+    colors : list of color
+        The colors to use.
+    styles: list of styles
+        Styles for each string 
+    weights: list of weights
+        Weights for each string 
+    orientation : {'horizontal', 'vertical'}
+    ax : Axes, optional
+        The Axes to draw into. If None, the current axes will be used.
+	t : transform to use for text coordinates
+    **kwargs
+        All other keyword arguments are passed to plt.text(), so you can
+        set the font size, family, etc.
+    """
+    if ax is None:
+        ax = plt.gca()
+
+    tstring = tstring.lower()
+    if tstring == "axes":
+        t = ax.transAxes
+    elif tstring == "data":
+        t = ax.transData
+    elif tstring == "figure":
+        t = fig.transFigure
+    elif tstring == "display":
+        t = None
+    elif tstring == "xaxis":
+        t = ax.get_xaxis_transform()
+    elif tstring == "yaxis":
+        t = ax.get_yaxis_transform()
+    else:
+        t = None
+
+    if styles == None:
+        styles = "normal"
+    if isinstance(styles, str):
+        styles = [styles for x in strings]
+    if weights == None:
+        weights = "normal"
+    if isinstance(weights, str):
+        weights = [weights for x in strings]
+    
+    canvas = ax.figure.canvas
+
+    assert orientation in ['horizontal', 'vertical']
+    if orientation == 'vertical':
+        kwargs.update(rotation=90, verticalalignment='bottom')
+
+    for i in range(len(strings)):
+        text = ax.text(x, y, strings[i], color=colors[i], 
+                       transform=t, style=styles[i], weight=weights[i], 
+                       **kwargs)
+
+        # Need to draw to update the text position.
+        text.draw(canvas.get_renderer())
+
+        bbox = text.get_window_extent().transformed(t.inverted())
+        if orientation == "horizontal":
+            x = bbox.x1
+        else:
+            y = bbox.y1
+    return bbox
+
 def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
     """
     Make subplot grid plots for each state/country of interest in list.
@@ -97,7 +175,7 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         statenations = STATES
         lw = 0.75
         labelsize = "xx-small"
-        fontsize = "small"
+        fontsize = "x-small"
         filename = f"states_new_{lbl}.pdf"
     elif region == "eu_vs_usa":
         data["EU"] = data.loc[:,EU_COUNTRIES].sum(axis=1)
@@ -110,14 +188,14 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         statenations = ["US", "EU"]
         filename = f"EU_vs_USA_{lbl}.pdf"
     elif region in ["worst_usa", "worst_global", "worst_world"]:
-        data_sorted = dailydata.T.sort_values(dailydata.index[-1], ascending=False).T
-        dailydata = data_sorted.iloc[:, :10]
+        avg = dailydata.rolling(7, center=True, min_periods=2).mean()
+        data_sorted = avg.T.sort_values(avg.index[-1], ascending=False).T
+        statenations = data_sorted.iloc[:, :10].columns.values
         subplots = (3, 3)
         figsize = (13, 10)
         lw = 1.5
         labelsize = "small"
         fontsize= "medium"
-        statenations = dailydata.columns.values
         if region == "worst_usa":
             filename = f"worst_usa_{lbl}.pdf"
         else:
@@ -125,6 +203,7 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
     else:
         raise KeyError("Region {region} not in acceptable values")
 
+    avg = dailydata.rolling(7, center=True, min_periods=2).mean()
     fig, axes = plt.subplots(subplots[0], subplots[1],
                              figsize=(figsize[0], figsize[1]),
                              sharex=True)
@@ -135,15 +214,12 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
 
     for i,ax in enumerate(axes.flatten()):
         
-#        if region == "eu_vs_usa":
         ax.bar(dailydata.index, dailydata[statenations[i]], color=BAR_C, zorder=5)
-        ax.plot(dailydata[statenations[i]].rolling(7,
-                                              center=True,
-                                              min_periods=2).mean(),
-                                              c=CONTRAST_C, lw=lw, zorder=10)
-        ax.set_ylim(bottom=0)
+        ax.plot(avg[statenations[i]], c=CONTRAST_C, lw=lw, zorder=10)
+
         total = int(dailydata[statenations[i]].sum())
         lastval = int(dailydata[statenations[i]][-1])
+        avglastval = int(avg[statenations[i]][-1])
         
         ax.set_xlim(left=datetime.date(2020, 2, 27))
         
@@ -157,13 +233,17 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         ax.xaxis.set_major_locator(months)
         ax.yaxis.get_major_ticks()[0].label1.set_visible(False)
         ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+
         
         if region != "eu_vs_usa":
+            max_avg = max(avg[statenations[i]])
+            ax.set_ylim(0, max_avg+0.08*max_avg)
             ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
                 xycoords="axes fraction", size=fontsize)
-            ax.annotate(f"Last: {lastval:,}", (0.035, .9), 
-                xycoords = "axes fraction", size=fontsize, style="italic",
-                color=CONTRAST_C)
+            words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
+            colors = ["black", "lightcoral", "black", CONTRAST_C]
+            weights = ["normal", "normal", "normal", "bold"]
+            rainbow_text(0.035, .9, words, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, zorder=15)
         else:
             ax.set_xlim(left=datetime.date(2020, 2, 21))
             # Get the maximum number of intervals/10,000s of cases so far
@@ -257,25 +337,32 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
                             xycoords=("data", "axes fraction"), 
                             style="italic", color=VLINE_C, **ant_kwargs)
             
+
             # Define axis fraction coords for the Total and Last annotations
             # and the box surrounding them
-            ant_x = 0.027
-            ant_ylo = 0.75
-            ant_yhi = ant_ylo + 0.09
-            # Put a box around the Total and Last annotations
-            box = Rectangle((ant_x-0.003, ant_ylo-0.020), .15, .16, transform=ax.transAxes,
-                edgecolor=BOX_EDGE_C, facecolor=BOX_FACE_C, alpha=0.5)
+            text_x0 = 0.027
+            text_x1 = [0]
+            text_y = 0.84
+            bbox = rainbow_text(text_x0, text_y, [f"Total: {total:,}"], ["black"], ax=ax, fig=fig, 
+                                tstring="axes", size=fontsize, styles="italic", ha="left",
+                                va="center")
+            text_x1.append(bbox.x1)
+            text_y = 0.75
+            words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
+            colors = ["black", "lightcoral", "black", CONTRAST_C]
+            weights = ["normal", "normal", "normal", "bold"]
+            bbox = rainbow_text(text_x0, text_y, words, colors, ax=ax, fig=fig, 
+                                tstring="axes", weights=weights, styles="italic", 
+                                size=fontsize, ha="left", va="center")
+            text_x1.append(bbox.x1)
+            max_x = max(text_x1)
+            box = Rectangle((text_x0-0.003, text_y-0.03), (max_x-text_x0)+0.006, .16, 
+                transform=ax.transAxes, edgecolor=BOX_EDGE_C, facecolor=BOX_FACE_C, alpha=0.5)
             ax.add_patch(box)
-            ax.annotate(f"Total: {total:,}", (ant_x, ant_yhi), va="center", ha="left", 
-                xycoords = "axes fraction", size=fontsize, style="italic")
-            ax.annotate(f"Last: {lastval:,}", (ant_x, ant_ylo), 
-                xycoords = "axes fraction", size=fontsize, style="italic",
-                color=CONTRAST_C)
-            
+
             # Define US and EU population (in units of intervals) by hand
             # and write a title
             eu_usa_pops = {"US": 328, "EU": 445} 
-            tester = "US"
             if deaths is False:
                 infected = round((total / (eu_usa_pops[statenations[i]] * 1e6)) * 100.)
                 lab = f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million ({infected}% infected)"
@@ -289,9 +376,22 @@ def grid_plot(data, region, outdir="plots", deaths=False, *args, **kwargs):
         eu_ymax = axes[1].get_ylim()[1]
         max_max = max(us_ymax, eu_ymax)
         max_max_buffer = max_max + (0.05 * max_max)
-        axes[0].set_ylim(top=max_max_buffer)
-        axes[1].set_ylim(top=max_max_buffer)
+        axes[0].set_ylim(0, max_max_buffer)
+        axes[1].set_ylim(0, max_max_buffer)
 
+    words = ["Last: ", "value", "/", "7 day average"]
+    colors = ["black", "lightcoral", "black", CONTRAST_C]
+    weights = ["normal", "normal", "normal", "bold"]
+    ax = plt.gca()
+    canvas = ax.figure.canvas
+    t = fig.transFigure
+    text = ax.text(0.5, .945, "".join(words), color="white", 
+                   transform=t, size='x-large', ha="center")
+    text.draw(canvas.get_renderer())
+    bbox = text.get_window_extent().transformed(t.inverted())
+    x0 = bbox.x0
+    
+    rainbow_text(x0, .945, words, colors, weights=weights, fig=fig, tstring="figure", size='x-large')
     plt.suptitle(f'New daily {lbl}\n{dailydata.index[-1]:%B %d, %Y}',
                  fontsize='x-large', y=1.01)
     outfilename = os.path.join(outdir, filename)
