@@ -58,30 +58,38 @@ xright = datetime.datetime.now() + datetime.timedelta(days=1)
 # Read and handle data
 
 # Read in data for USA
-data, pops = get_data.get_data("usa")
-data = data.diff()
-# Use 7 day average as the defacto data
-data = data.rolling(7, center=True, min_periods=2).mean()
+data_d = {}
+for deaths in [False, True]:
+    data, pops = get_data.get_data("usa", deaths=deaths)
+    data = data.diff()
+    # Use 7 day average as the defacto data
+    data = data.rolling(7, center=True, min_periods=2).mean()
+    
+    # Sort and determine worst 9 states, both raw and per capita
+    data_sorted = data.T.sort_values(data.index[-1], ascending=False).T
+    worst9 = data_sorted.iloc[:, :9] 
+    worst9names = worst9.columns.values
+    worst9inds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in worst9names]
+    worst9inds2 = [x for x in range(len(all_regions2)) if all_regions2[x] in worst9names]
+    data_capita = CAPITA * data.div(pops.iloc[0], axis="columns")
+    data_capita_sorted = data_capita.T.sort_values(data_capita.index[-1], ascending=False).T
+    worst9_capita = data_capita_sorted.iloc[:, :9] 
+    worst9names_capita = worst9_capita.columns.values
+    worst9inds1_capita = [x for x in range(len(all_regions1)) if all_regions1[x] in worst9names_capita]
+    worst9inds2_capita = [x for x in range(len(all_regions2)) if all_regions2[x] in worst9names_capita]
+    
+    # Add the index (date) as a column for convenience
+    data["date"] = data.index
 
-# Sort and determine worst 9 states, both raw and per capita
-data_sorted = data.T.sort_values(data.index[-1], ascending=False).T
-worst9 = data_sorted.iloc[:, :9] 
-worst9names = worst9.columns.values
-worst9inds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in worst9names]
-worst9inds2 = [x for x in range(len(all_regions2)) if all_regions2[x] in worst9names]
-data_capita = CAPITA * data.div(pops.iloc[0], axis="columns")
-data_capita_sorted = data_capita.T.sort_values(data_capita.index[-1], ascending=False).T
-worst9_capita = data_capita_sorted.iloc[:, :9] 
-worst9names_capita = worst9_capita.columns.values
-worst9inds1_capita = [x for x in range(len(all_regions1)) if all_regions1[x] in worst9names_capita]
-worst9inds2_capita = [x for x in range(len(all_regions2)) if all_regions2[x] in worst9names_capita]
-
-# Add the index (date) as a column for convenience
-data["date"] = data.index
+    data_d[deaths] = {"data": data,
+                      "worst9inds1": worst9inds1,
+                      "worst9inds2": worst9inds2,
+                      "worst9inds1_capita": worst9inds1_capita,
+                      "worst9inds2_capita": worst9inds2_capita}
 
 #-----------------------------------------------------------------------------#
 
-def make_data_src(region_list, percapita=False):
+def make_data_src(region_list, percapita=False, deaths=False):
     """
     Create and update a bokeh data source depending on the selected regions
     to display.
@@ -93,6 +101,10 @@ def make_data_src(region_list, percapita=False):
             containing the case numbers as a function of date, the name
             of the region, and color of the region.
     """
+
+    worst9.button_type = "default"
+
+    data = data_d[deaths]["data"]
 
     xs = [data["date"] for x in range(len(region_list))]
     if percapita is True:
@@ -184,11 +196,18 @@ def update_plot(attr, old, new):
          + [region_selection2.labels[i] for i in region_selection2.active]
 
     # Corresponds to unscaled
-    if radio_buttons.active == 0:
-        new_src = make_data_src(regions_to_plot)
+    if scaling.active == 0:
+        percapita = False
     # Corresponds to per capita
     else:
-        new_src = make_data_src(regions_to_plot, percapita=True)
+        percapita = True
+
+    # Corresponds to cases
+    if data_type.active == 0:
+        new_src = make_data_src(regions_to_plot, percapita=percapita, deaths=False)
+    # Corresponds to deaths
+    else:
+        new_src = make_data_src(regions_to_plot, percapita=percapita, deaths=True)
     
     src.data.update(new_src.data)
 
@@ -213,21 +232,34 @@ def worst9_update():
     Select worst 9 regions for display. Worst is defined as highest number of 
     cases on the last available date.
     """
+    # Corresponds to cases
+    if data_type.active == 0:
+        worst_d = data_d[False]
+    else:
+        worst_d = data_d[True]
+
     # Corresponds to unscaled
-    if radio_buttons.active == 0:
-        region_selection1.active = worst9inds1
-        region_selection2.active = worst9inds2
+    if scaling.active == 0:
+        region_selection1.active = worst_d["worst9inds1"]
+        region_selection2.active = worst_d["worst9inds2"]
     # Corresponds to per capita
     else:
-        region_selection1.active = worst9inds1_capita
-        region_selection2.active = worst9inds2_capita
+        region_selection1.active = worst_d["worst9inds1_capita"]
+        region_selection2.active = worst_d["worst9inds2_capita"]
+
+    worst9.button_type = "primary"
 
 #-----------------------------------------------------------------------------#
 
-# Radio button group for selecting unscaled vs per capita
-radio_buttons = RadioButtonGroup(labels=["Unscaled", "Per 100,000"], active=0, 
+# Radio button group for selecting cases vs deaths
+data_type = RadioButtonGroup(labels=["Cases", "Deaths"], active=0, 
                                  css_classes=["custom_button"])
-radio_buttons.on_change("active", update_plot)
+data_type.on_change("active", update_plot)
+
+# Radio button group for selecting unscaled vs per capita
+scaling = RadioButtonGroup(labels=["Unscaled", "Per 100,000"], active=0, 
+                                 css_classes=["custom_button"])
+scaling.on_change("active", update_plot)
 
 # Select and unselect all
 select_all = Button(label="Select All", css_classes=["custom_button"])
@@ -236,7 +268,7 @@ unselect_all = Button(label="Unselect All", css_classes=["custom_button"])
 unselect_all.on_click(unselect_all_update)
 
 # Button for displaying worst 9 regions
-worst9 = Button(label="Show Worst 9 States", css_classes=["custom_button"])
+worst9 = Button(label="Show Worst 9 States", css_classes=["custom_button"])#, button_type="success")
 worst9.on_click(worst9_update)
 
 # Checkboxes to select regions to display
@@ -254,7 +286,8 @@ src = make_data_src(initial_regions)
 p = make_plot(src)
 
 # Put controls/widgets in a single columns element
-widgets = column(radio_buttons, 
+widgets = column(data_type,
+                 scaling, 
                  row(select_all, unselect_all, width=350), 
                  worst9,
                  row(region_selection1, region_selection2, width=350),

@@ -49,20 +49,25 @@ all_countries = by_cont["All"]
 all_conts = by_cont.keys().to_list()
 
 # Read in data for world
-data, pops = get_data.get_data("world")
-data = data.diff()
-# Use 7 day average as the defacto data
-data = data.rolling(7, center=True, min_periods=2).mean()
+data_d = {}
+for deaths in [False, True]:
+    data, pops = get_data.get_data("world", deaths=deaths)
+    data = data.diff()
+    # Use 7 day average as the defacto data
+    data = data.rolling(7, center=True, min_periods=2).mean()
+    
+    # Calculate per capita values
+    data_capita = capita * data.div(pops.iloc[0], axis="columns")
+    
+    # Add the index (date) as a column for convenience
+    data["date"] = data.index
 
-# Calculate per capita values
-data_capita = capita * data.div(pops.iloc[0], axis="columns")
-
-# Add the index (date) as a column for convenience
-data["date"] = data.index
+    data_d[deaths] = {"data": data, "data_capita": data_capita, 
+                      "worstinds_d": {}, "worstinds_capita_d": {}}
 
 #-----------------------------------------------------------------------------#
 
-def make_data_src(region_list, percapita=False):
+def make_data_src(region_list, percapita=False, deaths=False):
     """
     Create and update a bokeh data source depending on the selected regions
     to display.
@@ -74,6 +79,10 @@ def make_data_src(region_list, percapita=False):
             containing the case numbers as a function of date, the name
             of the region, and color of the region.
     """
+
+    worst.button_type = "default"
+
+    data = data_d[deaths]["data"]
 
     xs = [data["date"] for x in range(len(region_list))]
     if percapita is True:
@@ -180,12 +189,19 @@ def update_plot(attr, old, new):
          + [all_regions_d[tab_title][1][i] for i in checkbox_d[tab_title][1].active]
 
     # Corresponds to unscaled
-    if radio_buttons.active == 0:
-        new_src = make_data_src(regions_to_plot)
+    if scaling.active == 0:
+        percapita = False
     # Corresponds to per capita
     else:
-        new_src = make_data_src(regions_to_plot, percapita=True)
-    
+        percapita = True
+
+    # Corresponds to cases
+    if data_type.active == 0:
+        new_src = make_data_src(regions_to_plot, percapita=percapita, deaths=False)
+    # Corresponds to deaths
+    else:
+        new_src = make_data_src(regions_to_plot, percapita=percapita, deaths=True)
+
     srcs[tab_title].data.update(new_src.data)
 
 #-----------------------------------------------------------------------------#
@@ -253,18 +269,26 @@ def worst_update():
     Select worst regions for display. Worst is defined as highest number of 
     cases on the last available date.
     """
-    
+   
+    # Corresponds to cases
+    if data_type.active == 0:
+        d0 = data_d[False]
+    else:
+        d0 = data_d[True]
+ 
     # Corresponds to unscaled
-    if radio_buttons.active == 0:
-        worstinds_d_use = worstinds_d
+    if scaling.active == 0:
+        worstinds_d_use = d0["worstinds_d"]
     else: # Per capita
-        worstinds_d_use = worstinds_capita_d
+        worstinds_d_use = d0["worstinds_capita_d"]
     tab_title = get_active_tab()
     if tab_title == "All":
         for ms in multi_selects:
             ms.value = []
     checkbox_d[tab_title][0].active = worstinds_d_use[tab_title][0]
     checkbox_d[tab_title][1].active = worstinds_d_use[tab_title][1]
+
+    worst.button_type = "primary"
 
 #-----------------------------------------------------------------------------#
 
@@ -341,10 +365,15 @@ def multi_update(attr, old, new):
 
 #-----------------------------------------------------------------------------#
 
-# Radio button group for selecting unscaled vs per capita
-radio_buttons = RadioButtonGroup(labels=["Unscaled", "Per Million"], active=0, 
+# Radio button group for selecting cases vs deaths
+data_type = RadioButtonGroup(labels=["Cases", "Deaths"], active=0,
                                  css_classes=["custom_button"])
-radio_buttons.on_change("active", update_plot)
+data_type.on_change("active", update_plot)
+
+# Radio button group for selecting unscaled vs per capita
+scaling = RadioButtonGroup(labels=["Unscaled", "Per Million"], active=0, 
+                                 css_classes=["custom_button"])
+scaling.on_change("active", update_plot)
 
 # Select and unselect all
 select_all = Button(label="Select All", css_classes=["custom_button"])
@@ -359,8 +388,6 @@ worst.on_click(worst_update)
 all_regions_d = {}
 checkbox_d = {}
 textinput_d = {}
-worstinds_d = {}
-worstinds_capita_d = {}
 multi_selects = []
 srcs = {}
 tabs = []
@@ -378,19 +405,20 @@ for cont in all_conts:
     checkbox_d[cont] = [region_selection1, region_selection2]
     all_regions_d[cont] = [all_regions1, all_regions2]
 
-    # Get worst countries
-    if cont == "All":
-        worstnames = get_worst(cont, data, 9)
-        worstnames_capita = get_worst(cont, data_capita, 9)
-    else: 
-        worstnames = get_worst(cont, data, worstx) 
-        worstnames_capita = get_worst(cont, data_capita, worstx) 
-    worstinds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in worstnames]
-    worstinds2 = [x for x in range(len(all_regions2)) if all_regions2[x] in worstnames]
-    worstinds1_capita = [x for x in range(len(all_regions1)) if all_regions1[x] in worstnames_capita]
-    worstinds2_capita = [x for x in range(len(all_regions2)) if all_regions2[x] in worstnames_capita]
-    worstinds_d[cont] = [worstinds1, worstinds2]
-    worstinds_capita_d[cont] = [worstinds1_capita, worstinds2_capita]
+    for deaths in [False, True]:
+        # Get worst countries
+        if cont == "All":
+            worstnames = get_worst(cont, data_d[deaths]["data"], 9)
+            worstnames_capita = get_worst(cont, data_d[deaths]["data_capita"], 9)
+        else: 
+            worstnames = get_worst(cont, data_d[deaths]["data"], worstx) 
+            worstnames_capita = get_worst(cont, data_d[deaths]["data_capita"], worstx) 
+        worstinds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in worstnames]
+        worstinds2 = [x for x in range(len(all_regions2)) if all_regions2[x] in worstnames]
+        worstinds1_capita = [x for x in range(len(all_regions1)) if all_regions1[x] in worstnames_capita]
+        worstinds2_capita = [x for x in range(len(all_regions2)) if all_regions2[x] in worstnames_capita]
+        data_d[deaths]["worstinds_d"][cont] = [worstinds1, worstinds2]
+        data_d[deaths]["worstinds_capita_d"][cont] = [worstinds1_capita, worstinds2_capita]
 
     if cont == "All":
         continue
@@ -403,7 +431,8 @@ for cont in all_conts:
     p = make_plot(src)
 
     # Put controls/widgets in a single columns element
-    widgets = column(radio_buttons, 
+    widgets = column(data_type,
+                     scaling, 
                      row(select_all, unselect_all, width=350), 
                      worst,
                      row(region_selection1, region_selection2, width=350),
@@ -419,10 +448,14 @@ for cont in all_conts:
 src = make_data_src([])
 srcs[cont] = src
 p = make_plot(src)
-# Radio button group for selecting unscaled vs per capita
-all_radio_buttons = RadioButtonGroup(labels=["Unscaled", "Per Million"], active=0, 
+# Radio button group for selecting cases vs deaths
+all_data_type = RadioButtonGroup(labels=["Cases", "Deaths"], active=0,
                                  css_classes=["custom_button"])
-all_radio_buttons.on_change("active", update_plot)
+all_data_type.on_change("active", update_plot)
+# Radio button group for selecting unscaled vs per capita
+all_scaling = RadioButtonGroup(labels=["Unscaled", "Per Million"], active=0, 
+                                 css_classes=["custom_button"])
+all_scaling.on_change("active", update_plot)
 # Button for displaying worst regions for ALL countries
 all_worst = Button(label=f"Worst 9", css_classes=["custom_button"])
 all_worst.on_click(worst_update)
@@ -430,7 +463,8 @@ all_worst.on_click(worst_update)
 all_unselect_all = Button(label="Unselect All", css_classes=["custom_button"])
 all_unselect_all.on_click(unselect_all_update)
 # Put controls/widgets in a single columns element
-widgets = column(radio_buttons, 
+widgets = column(all_data_type,
+                 all_scaling, 
                  row(all_worst, all_unselect_all, width=350),
                  text_input,
                  column(children=multi_selects),
