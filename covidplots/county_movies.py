@@ -30,7 +30,7 @@ import sys
 
 from get_data import download_data
 #Colormap to use
-CMAP = 'viridis_r'
+CMAP = 'Blues'
 VMIN = 0.001
 VMAX = 50
 
@@ -119,7 +119,7 @@ def fig_setup(figtype):
     return fig,ax,date_text
 
 
-#Function that mekes cloropleth
+#Function that makes cloropleth
 def update_percentile(col):
 
     dt1 = Time.now()
@@ -132,7 +132,7 @@ def update_percentile(col):
 def update_percapita(col):
 
     dt1 = Time.now()
-    fig1 = data.plot(column=col,cmap=CMAP,
+    fig2 = data.plot(column=col,cmap=CMAP,
               norm=colors.LogNorm(vmin=VMIN,vmax=VMAX),
               linewidth=0.25,ax=ax2,edgecolor='0.5')
     date_text.set_text(f'{col[:10]}')
