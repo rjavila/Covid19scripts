@@ -161,7 +161,7 @@ if __name__ == "__main__":
     if args.percentile:
 
         fig1,ax1,date_text = fig_setup('percentile')
-        ani1 = FuncAnimation(fig1,update_percentile,data.columns[5:8],
+        ani1 = FuncAnimation(fig1,update_percentile,data.columns[5:],
                              interval=0,cache_frame_data=False)
         ani1.save('plots/counties_worst.mp4',writer='ffmpeg',
                   fps=1,dpi=200)
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     if args.percapita:
 
         fig2,ax2,date_text = fig_setup('percapita')
-        ani2 = FuncAnimation(fig2,update_percapita,data.columns[5:8],
+        ani2 = FuncAnimation(fig2,update_percapita,data.columns[5:],
                              interval=0,cache_frame_data=False)
         ani2.save('plots/counties_percapita.mp4',writer='ffmpeg',
                   fps=1,dpi=200)
