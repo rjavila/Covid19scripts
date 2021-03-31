@@ -328,6 +328,9 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     perc90 = (pop * 0.9) - total_minus4
                     x = np.arange(x0, x0+1095)
                     emp = p(x)
+                    # Biden has stated a goal of 5 million doses a day. Let's say
+                    # this equates to 2.1 million people fully vaccinated a day.
+                    emp = np.where(emp > 2.1e6, 2.1e6, emp)
                     cumul = np.cumsum(emp)
                     ndays70 = int(np.where(cumul > perc70)[0][0]) 
                     ndays90 = int(np.where(cumul > perc90)[0][0])
