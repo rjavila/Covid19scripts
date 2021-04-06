@@ -29,6 +29,13 @@ def fix_census_df(census_df):
     census_df.drop(columns=to_remove, inplace=True)
     return census_df
 
+def fix_owid_df(owid_df, world=True):
+    if world is True:
+        owid_df['location'] = owid_df['location'].replace({"Myanmar": "Burma", 
+            "United States": "US", "Korea, South": "South Korea"})
+    else:
+        owid_df['location'] = owid_df['location'].replace({"New York State": "New York"})
+    return owid_df
 
 def fix_jhu_df(jhu_df):
     """
@@ -41,7 +48,7 @@ def fix_jhu_df(jhu_df):
     
     jhu_df.drop(columns=["Diamond Princess", "MS Zaandam", "Holy See"],
                 inplace=True)
-    jhu_df.rename({"Taiwan*": "Taiwan"}, axis="columns", inplace=True)
+    jhu_df.rename({"Taiwan*": "Taiwan", "Korea, South": "South Korea"}, axis="columns", inplace=True)
     return jhu_df
 
 
@@ -173,7 +180,7 @@ def jhu_countries():
  'Jordan',
  'Kazakhstan',
  'Kenya',
- 'Korea, South',
+ 'South Korea',
  'Kosovo',
  'Kuwait',
  'Kyrgyzstan',
