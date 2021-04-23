@@ -322,6 +322,8 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     recenty = avg[statenations[i]][-x0-4:-4].values
                     recentx = np.arange(len(recenty))
                     z = np.polyfit(recentx, recenty, 1)
+                    if z[0] < 0:
+                        z[0] = 0
                     p = np.poly1d(z)
                     pop = eu_usa_pops[statenations[i]] * 1e6
                     perc70 = (pop * 0.7) - total_minus4
