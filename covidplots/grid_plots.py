@@ -313,7 +313,7 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                 rainbow_text(0.035, .9, words, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, zorder=15)
             else:
                 if vax is True:
-                    ax.set_xlim(datetime.date(2021, 1, 1), dailydata.index[-1]+datetime.timedelta(days=7))
+                    ax.set_xlim(datetime.date(2021, 1, 10), dailydata.index[-1]+datetime.timedelta(days=4))
                     # Use the last 7 days (exluding last 4 days which are unreliable)
                     # to estimate the growth in vax per day, then use that to determine
                     # when country reaches 70 and 90% population vaccinated.
@@ -322,12 +322,17 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     recenty = avg[statenations[i]][-x0-4:-4].values
                     recentx = np.arange(len(recenty))
                     z = np.polyfit(recentx, recenty, 1)
+                    if z[0] < 0:
+                        z[0] = 0
                     p = np.poly1d(z)
                     pop = eu_usa_pops[statenations[i]] * 1e6
                     perc70 = (pop * 0.7) - total_minus4
                     perc90 = (pop * 0.9) - total_minus4
                     x = np.arange(x0, x0+1095)
                     emp = p(x)
+                    # Biden has stated a goal of 5 million doses a day. Let's say
+                    # this equates to 2.1 million people fully vaccinated a day.
+                    emp = np.where(emp > 2.1e6, 2.1e6, emp)
                     cumul = np.cumsum(emp)
                     ndays70 = int(np.where(cumul > perc70)[0][0]) 
                     ndays90 = int(np.where(cumul > perc90)[0][0])
@@ -339,6 +344,8 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                 lbl_days_thresh = 15
                 lbl_d_thresh = 6
                 lbl_num_thresh = 3
+                interval0 = 100
+                interval0_lbl = "100"
                 if lbl == "deaths":
                     interval = 40000
                     unit = 1000
@@ -352,6 +359,8 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     lbl_days_thresh = 5
                     lbl_d_thresh = 4
                     lbl_num_thresh = 3
+                    interval0 = 1e6
+                    interval0_lbl = "1 million"
                 else:
                     interval = 1000000
                     unit = 1000000
@@ -361,21 +370,21 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     maxinterval = fullydata[statenations[i]][-1] - fullydata[statenations[i]][-1] % interval
                 else:
                     maxinterval = data[statenations[i]][-1] - data[statenations[i]][-1] % interval
-                intervals = np.concatenate((np.array([100]),
+                intervals = np.concatenate((np.array([interval0]),
                                             np.arange(interval, maxinterval+interval, interval)))
                 # The indices for the next entry after each interval unit
                 if vax is True:
                     intervals_inds = [np.argmax(fullydata[statenations[i]] > x) for x in intervals]
                 else:
                     intervals_inds = [np.argmax(data[statenations[i]] > x) for x in intervals]
-                # Vertical lines will be put at 100 cases and each million afterward
+                # Vertical lines will be put at interval0 cases and each million afterward
                 # The last index is for marking the last date, but no vline
                 vline_inds = intervals_inds + [len(dailydata)-1]
                 ndays = np.array(vline_inds)[1:] - np.array(vline_inds)[:-1]
                 # Get the transformation function the data coordinates in X and
                 # axis fraction in Y
                 trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
-                # Make one continuous line from 100 cases to last date
+                # Make one continuous line from interval0 cases to last date
                 ax.plot([dailydata.index[[intervals_inds[0]]], dailydata.index[[vline_inds[-1]]]],
                         [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
                         clip_on=False)
@@ -449,7 +458,7 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                         else:
                             lab = f"{number}{vline_lbl_tiny}"
                     if j == 0:
-                        lab = "100"
+                        lab = f"{interval0_lbl}"
                     ax.annotate(lab, 
                                 (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=time_off), .93),
                                 xycoords=("data", "axes fraction"), 
