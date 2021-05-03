@@ -41,6 +41,12 @@ STATES = ['Alabama','Alaska','Arizona','Arkansas','California',
           'Rhode Island','South Carolina','South Dakota','Tennessee',
           'Texas','Utah','Vermont','Virginia','Washington',
           'West Virginia','Wisconsin','Wyoming']
+ABB = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", 
+       "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", 
+       "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", 
+       "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", 
+       "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+STATES_ABB = dict(zip(STATES,ABB))
 
 ALL_COUNTRIES = ['Brazil','Costa Rica','El Salvador','Germany','Iran',
                  'Italy','South Korea','Mexico','Russia','Spain','Sweden','US']
@@ -134,12 +140,13 @@ def rainbow_text(x, y, strings, colors, styles=None, weights=None,
             y = bbox.y1
     return bbox
 
-def grid_plot(data, region, vax=False, outdir="plots", deaths=False, 
+def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False, 
               *args, **kwargs):
     """
     Make subplot grid plots for each state/country of interest in list.
     Args:
         data (:obj:`pandas.DataFrame`): Covid statistics on region of interest.
+        pops (:obj:`pandas.DataFrame`): Population statistics on region of interest.
         region (str): Country/state of interest. Acceptable values are 'world', 
             'usa', 'latin', 'eu_vs_usa', 'worst_usa', 'worst_global'.
         outdir (str): Name of directory to save plots to.
@@ -302,11 +309,22 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                 max_avg = np.nanmax(avg[statenations[i]])
                 ax.set_ylim(0, max_avg+0.08*max_avg)
                 if vax is True:
+                    try:
+                        percvax = int(total/pops[statenations[i]]*100.)
+                    except:
+                        print(f"!!! could not get populatino for {statenations[i]}")
+                        percvax = "?"
                     ax.set_xlim(datetime.date(2021, 1, 1))
+                    if region == "usa":
+                        region_name = STATES_ABB[statenations[i]]
+                    else:
+                        region_name = statenations[i]
+                    ax.annotate(f"{region_name}, total: {total:,} ({percvax}%)", (0.035, 1.05), 
+                        xycoords="axes fraction", size=fontsize)
                 else:
                     ax.set_xlim(datetime.date(2020, 2, 27))
-                ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
-                    xycoords="axes fraction", size=fontsize)
+                    ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
+                        xycoords="axes fraction", size=fontsize)
                 words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
                 colors = ["black", LAST_C, "black", CONTRAST_C]
                 weights = ["normal", "normal", "normal", "bold"]
@@ -595,6 +613,6 @@ if __name__ == "__main__":
             usa_mort = mortality_rate("US", data, data2)
             eu_mort = mortality_rate("EU", data, data2)
             mort = {"US": usa_mort, "EU": eu_mort}
-            grid_plot(data, item, deaths=args.deaths, mort=mort, vax=args.vax)
+            grid_plot(data, pops, item, deaths=args.deaths, mort=mort, vax=args.vax)
         else:
-            grid_plot(data, item, deaths=args.deaths, vax=args.vax)
+            grid_plot(data, pops, item, deaths=args.deaths, vax=args.vax)
