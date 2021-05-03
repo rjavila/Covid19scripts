@@ -341,9 +341,9 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                 else:
                     ax.set_xlim(datetime.date(2020, 2, 21), dailydata.index[-1]+datetime.timedelta(days=7))
                 # Get the maximum number of intervals/10,000s of cases so far
-                lbl_days_thresh = 15
-                lbl_d_thresh = 6
-                lbl_num_thresh = 3
+                ndays_thresh = {"days": 15, "d": 6, "num": 3}
+                num_thresh = {"len1": {"long": 10, "tiny": 7}, "len2": {"long": 14, "tiny": 11}, 
+                              "extreme": {"fontsmall": 6, "fontxsmall": 5, "xoff_2": -1, "xoff": -6}}
                 interval0 = 100
                 interval0_lbl = "100"
                 if lbl == "deaths":
@@ -355,10 +355,11 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     interval = 10000000
                     unit = 1000000
                     vline_lbl = " million"
-                    vline_lbl_tiny = " million"
-                    lbl_days_thresh = 5
-                    lbl_d_thresh = 4
-                    lbl_num_thresh = 3
+                    vline_lbl_tiny = " mil"
+                    ndays_thresh = {"days": 5, "d": 4, "num": 3}
+                    num_thresh = {"len1": {"long": 7, "tiny": 4}, "len2": {"long": 7, "tiny": 4},
+                                  "len3": {"long": 7, "tiny": 4}, 
+                                  "extreme": {"fontsmall": 6, "fontxsmall": 5, "xoff_2": -1, "xoff": -6}}
                     interval0 = 1e6
                     interval0_lbl = "1 million"
                 else:
@@ -406,11 +407,11 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     # Depending on number of days in the interval, the time unit
                     # will be days, d, no unit at all, or no number at all
                     middle_i = vline_inds[j] + int(ndays[j]/2)
-                    if ndays[j] > lbl_days_thresh: 
+                    if ndays[j] > ndays_thresh["days"]: 
                         elapsed_lbl = f"{ndays[j]} days"
-                    elif ndays[j] >= lbl_d_thresh:
+                    elif ndays[j] >= ndays_thresh["d"]:
                         elapsed_lbl = f"{ndays[j]}d"
-                    elif ndays[j] >= lbl_num_thresh:
+                    elif ndays[j] >= ndays_thresh["num"]:
                         elapsed_lbl = f"{ndays[j]}"
                     else:
                         elapsed_lbl = ""
@@ -433,30 +434,24 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     if skip == True:
                         lab = ""
                         skip = False
-                    elif len(number) == 1:
-                        if ndays[j] > 10 or j == len(vline_inds)-2:
-                            lab = f"{number}{vline_lbl}"
-                        elif ndays[j] < 7:
-                            lab = f"{number}"
-                        else:
-                            lab = f"{number}{vline_lbl_tiny}"
+                    lenkey = f"len{len(number)}"
+                    if j == len(vline_inds)-2:
+                        lab = f"{number}{vline_lbl_tiny}"
+                    elif ndays[j] > num_thresh[lenkey]["long"]: 
+                        lab = f"{number}{vline_lbl}"
+                    elif ndays[j] > num_thresh[lenkey]["tiny"]:
+                        lab = f"{number}{vline_lbl_tiny}"
                     else:
-                        if j == len(vline_inds)-2:
-                            lab = f"{number}{vline_lbl_tiny}"
-                        elif ndays[j] > 14:
-                            lab = f"{number}{vline_lbl}"
-                        elif ndays[j] < 11:
-                            lab = f"{number}"
-                            if ndays[j] < 5:
-                                ant_kwargs = {"size": 8}
-                            elif ndays[j] < 6:
-                                ant_kwargs = {"size": 8.5}
-                            if number[0] == "2":
-                                time_off = -1
-                            else:
-                                time_off = -6
+                        lab = f"{number}"
+                        if ndays[j] < num_thresh["extreme"]["fontxsmall"]:
+                            ant_kwargs = {"size": 8}
+                        elif ndays[j] < num_thresh["extreme"]["fontsmall"]:
+                            ant_kwargs = {"size": 8.5}
+                        if number[0] == "2":
+                            time_off = num_thresh["extreme"]["xoff_2"]
                         else:
-                            lab = f"{number}{vline_lbl_tiny}"
+                            time_off = num_thresh["extreme"]["xoff"]
+
                     if j == 0:
                         lab = f"{interval0_lbl}"
                     ax.annotate(lab, 
