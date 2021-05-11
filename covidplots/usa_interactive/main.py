@@ -58,38 +58,49 @@ xright = datetime.datetime.now() + datetime.timedelta(days=1)
 # Read and handle data
 
 # Read in data for USA
+dtype_kwargs = {"cases": {"deaths": False, "vax": False}, 
+          "deaths": {"deaths": True, "vax": False}, 
+          "vax": {"deaths": False, "vax": True},
+          "percvax": {"deaths": False, "vax": True}}
 data_d = {}
-for deaths in [False, True]:
-    data, pops = get_data.get_data("usa", deaths=deaths)
-    data = data.diff()
-    # Use 7 day average as the defacto data
-    data = data.rolling(7, center=True, min_periods=2).mean()
+for dtype in dtype_kwargs:
+    kwargs = dtype_kwargs[dtype]
+    data, pops = get_data.get_data("usa", **kwargs)
+    if dtype in ["vax", "percvax"]:
+        partialdata,data = get_data.vax_by_region(data)
+    if dtype == "percvax":
+        data = data/pops * 100.
+    else:
+        data = data.diff()
+        # Use 7 day average as the defacto data
+        data = data.rolling(7, center=True, min_periods=2).mean()
     
-    # Sort and determine worst 9 states, both raw and per capita
-    data_sorted = data.T.sort_values(data.index[-1], ascending=False).T
-    worst9 = data_sorted.iloc[:, :9] 
-    worst9names = worst9.columns.values
-    worst9inds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in worst9names]
-    worst9inds2 = [x for x in range(len(all_regions2)) if all_regions2[x] in worst9names]
-    data_capita = CAPITA * data.div(pops.iloc[0], axis="columns")
-    data_capita_sorted = data_capita.T.sort_values(data_capita.index[-1], ascending=False).T
-    worst9_capita = data_capita_sorted.iloc[:, :9] 
-    worst9names_capita = worst9_capita.columns.values
-    worst9inds1_capita = [x for x in range(len(all_regions1)) if all_regions1[x] in worst9names_capita]
-    worst9inds2_capita = [x for x in range(len(all_regions2)) if all_regions2[x] in worst9names_capita]
+    data_d[dtype] = {"data": data}
+    # Sort and determine worst and best 9 states, both raw and per capita
+    subs = {"worst": [0,9], "best": [-9,len(data)]} 
+    for rang in subs:
+        data_sorted = data.T.sort_values(data.index[-1], ascending=False).T
+        sub = data_sorted.iloc[:, subs[rang][0]:subs[rang][1]] 
+        names = sub.columns.values
+        inds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in names]
+        inds2 = [x for x in range(len(all_regions2)) if all_regions2[x] in names]
+        data_capita = CAPITA * data.div(pops.iloc[0], axis="columns")
+        data_capita_sorted = data_capita.T.sort_values(data_capita.index[-1], ascending=False).T
+        sub_capita = data_capita_sorted.iloc[:, subs[rang][0]:subs[rang][1]] 
+        names_capita = sub_capita.columns.values
+        inds1_capita = [x for x in range(len(all_regions1)) if all_regions1[x] in names_capita]
+        inds2_capita = [x for x in range(len(all_regions2)) if all_regions2[x] in names_capita]
+        data_d[dtype][f"{rang}9inds1"] = inds1
+        data_d[dtype][f"{rang}9inds2"] = inds2
+        data_d[dtype][f"{rang}9inds1_capita"] = inds1_capita
+        data_d[dtype][f"{rang}9inds2_capita"] = inds2_capita
     
     # Add the index (date) as a column for convenience
     data["date"] = data.index
 
-    data_d[deaths] = {"data": data,
-                      "worst9inds1": worst9inds1,
-                      "worst9inds2": worst9inds2,
-                      "worst9inds1_capita": worst9inds1_capita,
-                      "worst9inds2_capita": worst9inds2_capita}
-
 #-----------------------------------------------------------------------------#
 
-def make_data_src(region_list, percapita=False, deaths=False):
+def make_data_src(region_list, percapita=False, dtype="cases"):
     """
     Create and update a bokeh data source depending on the selected regions
     to display.
@@ -104,7 +115,7 @@ def make_data_src(region_list, percapita=False, deaths=False):
 
     worst9.button_type = "default"
 
-    data = data_d[deaths]["data"]
+    data = data_d[dtype]["data"]
 
     xs = [data["date"] for x in range(len(region_list))]
     if percapita is True:
@@ -202,12 +213,9 @@ def update_plot(attr, old, new):
     else:
         percapita = True
 
-    # Corresponds to cases
-    if data_type.active == 0:
-        new_src = make_data_src(regions_to_plot, percapita=percapita, deaths=False)
-    # Corresponds to deaths
-    else:
-        new_src = make_data_src(regions_to_plot, percapita=percapita, deaths=True)
+    # Select which data we're currently looking at
+    dtype = select_data_type()
+    new_src = make_data_src(regions_to_plot, percapita=percapita, dtype=dtype)
     
     src.data.update(new_src.data)
 
@@ -232,11 +240,9 @@ def worst9_update():
     Select worst 9 regions for display. Worst is defined as highest number of 
     cases on the last available date.
     """
-    # Corresponds to cases
-    if data_type.active == 0:
-        worst_d = data_d[False]
-    else:
-        worst_d = data_d[True]
+    # Select which data we're currently looking at
+    dtype = select_data_type()
+    worst_d = data_d[dtype]
 
     # Corresponds to unscaled
     if scaling.active == 0:
@@ -251,8 +257,18 @@ def worst9_update():
 
 #-----------------------------------------------------------------------------#
 
+def select_data_type():
+    relation = {0: "cases",
+                1: "deaths",
+                2: "vax",
+                3: "percvax"}
+    dtype = relation[data_type.active]
+    return dtype
+
+#-----------------------------------------------------------------------------#
+
 # Radio button group for selecting cases vs deaths
-data_type = RadioButtonGroup(labels=["Cases", "Deaths"], active=0, 
+data_type = RadioButtonGroup(labels=["Cases", "Deaths", "Fully Vax People", "% Population Vax"], active=0, 
                                  css_classes=["custom_button"])
 data_type.on_change("active", update_plot)
 
