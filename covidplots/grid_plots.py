@@ -360,7 +360,8 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
                     ax.set_xlim(datetime.date(2020, 2, 21), dailydata.index[-1]+datetime.timedelta(days=7))
                 # Get the maximum number of intervals/10,000s of cases so far
                 ndays_thresh = {"days": 15, "d": 6, "num": 3}
-                num_thresh = {"len1": {"long": 10, "tiny": 7}, "len2": {"long": 14, "tiny": 11}, 
+                num_thresh = {"len1": {"long": 10, "tiny": 7}, "len2": {"long": 14, "tiny": 11},
+                              "len3": {"long": 14, "tiny": 11},  
                               "extreme": {"fontsmall": 6, "fontxsmall": 5, "xoff_2": -1, "xoff": -6}}
                 interval0 = 100
                 interval0_lbl = "100"
