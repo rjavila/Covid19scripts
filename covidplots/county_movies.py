@@ -74,7 +74,7 @@ def prepare_data():
 
     dt_idx = pd.to_datetime(covid.columns)
     covid = covid.T
-    covid = covid.reindex(dt_idx)
+    covid.index = dt_idx
     covid = covid.iloc[5:].resample('W',label='right',closed='right').sum()
     covid.rename(index=str,inplace=True)
     covid = covid.T
