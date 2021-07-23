@@ -229,6 +229,11 @@ def update_plot(attr, old, new):
         else:
             percapita = True
 
+    if dtype in ["percvax", "vax"]:
+        p.x_range.start = xleft_vax 
+    else:
+        p.x_range.start = xleft
+
     new_src = make_data_src(regions_to_plot, percapita=percapita, dtype=dtype)
     
     src.data.update(new_src.data)
