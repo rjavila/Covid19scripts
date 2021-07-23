@@ -214,16 +214,21 @@ def update_plot(attr, old, new):
 
     regions_to_plot = [region_selection1.labels[i] for i in region_selection1.active]\
          + [region_selection2.labels[i] for i in region_selection2.active]
+    
+    # Select which data we're currently looking at
+    dtype = select_data_type()
 
     # Corresponds to unscaled
     if scaling.active == 0:
         percapita = False
     # Corresponds to per capita
     else:
-        percapita = True
+        if dtype == "percvax":
+            scaling.active = 0
+            percapita = False
+        else:
+            percapita = True
 
-    # Select which data we're currently looking at
-    dtype = select_data_type()
     new_src = make_data_src(regions_to_plot, percapita=percapita, dtype=dtype)
     
     src.data.update(new_src.data)
