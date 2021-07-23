@@ -52,6 +52,7 @@ colors_d = dict(zip(all_regions, colors_l[:len(all_regions)]))
 
 # Set x limits to be March 1 -> now + 1 day
 xleft = datetime.datetime(2020, 3, 1)
+xleft_vax = datetime.datetime(2021, 1, 12)
 xright = datetime.datetime.now() + datetime.timedelta(days=1)
 
 #-----------------------------------------------------------------------------#
@@ -68,19 +69,26 @@ for dtype in dtype_kwargs:
     data, pops = get_data.get_data("usa", **kwargs)
     if dtype in ["vax", "percvax"]:
         partialdata,data = get_data.vax_by_region(data)
+        data = data[STATES]
+        pops = pops[STATES]
     if dtype == "percvax":
-        data = data/pops * 100.
+        data = data/pops.values[0] * 100.
     else:
+        data = data[STATES]
+        pops = pops[STATES]
         data = data.diff()
         # Use 7 day average as the defacto data
         data = data.rolling(7, center=True, min_periods=2).mean()
     
     data_d[dtype] = {"data": data}
     # Sort and determine worst and best 9 states, both raw and per capita
-    subs = {"worst": [0,9], "best": [-9,len(data)]} 
+    if dtype in ["vax", "percvax"]:
+        subs = {"best": [0,9], "worst": [-9,len(data)]}
+    else: 
+        subs = {"worst": [0,9], "best": [-9,len(data)]} 
     for rang in subs:
         data_sorted = data.T.sort_values(data.index[-1], ascending=False).T
-        sub = data_sorted.iloc[:, subs[rang][0]:subs[rang][1]] 
+        sub = data_sorted.iloc[:, subs[rang][0]:subs[rang][1]]
         names = sub.columns.values
         inds1 = [x for x in range(len(all_regions1)) if all_regions1[x] in names]
         inds2 = [x for x in range(len(all_regions2)) if all_regions2[x] in names]
@@ -114,6 +122,7 @@ def make_data_src(region_list, percapita=False, dtype="cases"):
     """
 
     worst9.button_type = "default"
+    best9.button_type = "default"
 
     data = data_d[dtype]["data"]
 
@@ -159,7 +168,7 @@ def style(p):
     p.xaxis.formatter=DatetimeTickFormatter(months=["%b %Y"])
 
     hover = HoverTool(tooltips=[("State", "@names"),
-                                ("Cases", "$data_y{int}"),
+                                ("Value", "$data_y{int,}"),
                                 ("Date", "$data_x{%b %d %Y}")],
                       formatters={"$data_x": "datetime"},)     
     p.add_tools(hover)                                            
@@ -176,7 +185,7 @@ def make_plot(src):
     Returns:
         p (`obj: bokeh.figure`): bokeh figure object for display.
     """
-
+    
     # Create figure
     p = figure(plot_width = 1500, plot_height = 1000, 
               title = 'New Daily Covid-19 Cases, 7-day Average',
@@ -257,6 +266,39 @@ def worst9_update():
 
 #-----------------------------------------------------------------------------#
 
+def best9_update():
+    """ 
+    Select best 9 regions for display. Yes, I tried merging this with
+    worst9_update, bokeh didn't like it... 
+    """
+    
+    # Select which data we're currently looking at
+    dtype = select_data_type()
+    best_d = data_d[dtype]
+
+    # Corresponds to unscaled
+    if scaling.active == 0:
+        region_selection1.active = best_d["best9inds1"]
+        region_selection2.active = best_d["best9inds2"]
+    # Corresponds to per capita
+    else:
+        region_selection1.active = best_d["best9inds1_capita"]
+        region_selection2.active = best_d["best9inds2_capita"]
+
+    best9.button_type = "primary"
+
+#-----------------------------------------------------------------------------#
+
+def select_data_type():
+    relation = {0: "cases",
+                1: "deaths",
+                2: "vax",
+                3: "percvax"}
+    dtype = relation[data_type.active]
+    return dtype
+
+#-----------------------------------------------------------------------------#
+
 def select_data_type():
     relation = {0: "cases",
                 1: "deaths",
@@ -286,6 +328,9 @@ unselect_all.on_click(unselect_all_update)
 # Button for displaying worst 9 regions
 worst9 = Button(label="Show Worst 9 States", css_classes=["custom_button"])#, button_type="success")
 worst9.on_click(worst9_update)
+# Button for displaying best 9 regions
+best9 = Button(label="Show Best 9 States", css_classes=["custom_button"])#, button_type="success")
+best9.on_click(best9_update)
 
 # Checkboxes to select regions to display
 # Split into groups to make the checkboxes 2 columns
@@ -306,6 +351,7 @@ widgets = column(data_type,
                  scaling, 
                  row(select_all, unselect_all, width=350), 
                  worst9,
+                 best9,
                  row(region_selection1, region_selection2, width=350),
                  width=350, height=1000)#, width=200) 
 
