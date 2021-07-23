@@ -7,5 +7,5 @@ setup(
     packages = find_packages(),
     install_requires = ["pandas",
                         "python3-wget",
-                        "bokeh"]
+                        "bokeh>=2.3"]
     )
