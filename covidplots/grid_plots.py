@@ -237,8 +237,14 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
         if vax is True:
             avg_fully = fully.rolling(7, center=True, min_periods=2).mean()
             avg_partial = partial.rolling(7, center=True, min_periods=2).mean()
-            fully_sorted = avg_fully.T.sort_values(avg_fully.index[-1], ascending=False).T
-            partial_sorted = avg_partial.T.sort_values(avg_partial.index[-1], ascending=False).T
+            total_fully = fully.sum()
+            percvax = total_fully/pops * 100.
+            if region == "worst_usa":
+                fully_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
+            else:
+                fully_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
+                #fully_sorted = avg_fully.T.sort_values(avg_fully.index[-1], ascending=False).T
+            #partial_sorted = avg_partial.T.sort_values(avg_partial.index[-1], ascending=False).T
 #            fully_statenations = fully_sorted.iloc[:, :10].columns.values
 #            partial_statenations = partial_sorted.iloc[:, :10].columns.values
             statenations = fully_sorted.iloc[:, :10].columns.values
@@ -593,7 +599,7 @@ if __name__ == "__main__":
     parser.add_argument('--regions', nargs='+')
     args = parser.parse_args()
     
-    allowed_regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_world"]
+    allowed_regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_global", "worst_world"]
     if args.regions is None:
         regions = allowed_regions
     else:
