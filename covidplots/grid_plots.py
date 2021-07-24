@@ -238,7 +238,10 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
             avg_fully = fully.rolling(7, center=True, min_periods=2).mean()
             avg_partial = partial.rolling(7, center=True, min_periods=2).mean()
             total_fully = fully.sum()
+            # Only consider countries with population > 5M
+            large = pops.columns[(pops > 5000000).all()].values
             percvax = total_fully/pops * 100.
+            percvax = percvax[large]
             if region == "worst_usa":
                 fully_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
             else:
@@ -252,6 +255,7 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
                 filename = f"best_usa_{lbl}.pdf"
             else:
                 filename = f"best_global_{lbl}.pdf"
+                plottitle = "fully vaccinated (only countries > 5M)"
         else:
             avg = dailydata.rolling(7, center=True, min_periods=2).mean()
             data_sorted = avg.T.sort_values(avg.index[-1], ascending=False).T
@@ -318,7 +322,7 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
                     try:
                         percvax = int(total/pops[statenations[i]]*100.)
                     except:
-                        print(f"!!! could not get populatino for {statenations[i]}")
+                        print(f"!!! could not get population for {statenations[i]}")
                         percvax = "?"
                     ax.set_xlim(datetime.date(2021, 1, 1))
                     if region == "usa":
