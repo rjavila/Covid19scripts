@@ -10,7 +10,7 @@ import pandas as pd
 #         'MS Zaandam',
 #         'Gambia']
 
-def fix_census_df(census_df):
+def fix_census_df(census_df, countries=None):
     """
     Fix the Census data to match JHU country names, and remove countries 
     that have no Covid data.
@@ -20,21 +20,39 @@ def fix_census_df(census_df):
         census_df (:obj:`pandas.DataFrame`): Rectified census dataframe.
     """
 
-    jhu = jhu_countries()
     census_df["West Bank and Gaza"] = census_df["Gaza Strip"] + census_df["West Bank"]
     census_df.rename({"United States": "US", "Bahamas, The": "Bahamas",
-                      "Gambia, The": "Gambia"}, axis="columns", inplace=True)
+                      "Gambia, The": "Gambia", "Virgin Islands, British": "British Virgin Islands",
+                      "Virgin Islands, U.S.": "U.S. Virgin Islands",
+                      "Congo (Brazzaville)": "Congo", 
+                      "Congo (Kinshasa)": "Democratic Republic of Congo",
+                      "Korea, North": "North Korea", "Korea, South": "South Korea"}, 
+                      axis="columns", inplace=True)
     census_countries = census_df.columns.to_list()
-    to_remove = list(set(census_countries) - set(jhu))
+    if countries is None:
+        countries = jhu_countries()
+    to_remove = list(set(census_countries) - set(countries))
     census_df.drop(columns=to_remove, inplace=True)
+    census_df = census_df.reindex(sorted(census_df.columns), axis=1)
     return census_df
 
 def fix_owid_df(owid_df, world=True):
     if world is True:
         owid_df['location'] = owid_df['location'].replace({"Myanmar": "Burma", 
-            "United States": "US", "Korea, South": "South Korea"})
+            "United States": "US", "Korea, South": "South Korea",
+            "Cape Verde": "Cabo Verde", "Faeroe Islands": "Faroe Islands",
+            "Macao": "Macau", "Timor": "Timor-Leste"})
+        regions = ["Africa", "Asia", "European Union", "Europe", "North America", 
+                   "Oceania", "South America", "World", "Upper middle income", 
+                   "High income", "Low income", "Lower middle income"]
+        regions += ["Bonaire Sint Eustatius and Saba", "England", "Falkland Islands",
+                    "Niue", "Northern Cyprus", "Northern Ireland", "Palestine",
+                    "Pitcairn", "Saint Helena", "Scotland", "Sint Maarten (Dutch part)",
+                    "Wales"] 
+        owid_df.drop(owid_df.loc[owid_df["location"].isin(regions)].index, inplace=True)
     else:
         owid_df['location'] = owid_df['location'].replace({"New York State": "New York"})
+    owid_df = owid_df.reindex(sorted(owid_df.columns), axis=1)
     return owid_df
 
 def fix_jhu_df(jhu_df):
@@ -49,6 +67,7 @@ def fix_jhu_df(jhu_df):
     jhu_df.drop(columns=["Diamond Princess", "MS Zaandam", "Holy See"],
                 inplace=True)
     jhu_df.rename({"Taiwan*": "Taiwan", "Korea, South": "South Korea"}, axis="columns", inplace=True)
+    jhu_df = jhu_df.reindex(sorted(jhu_df.columns), axis=1)
     return jhu_df
 
 
