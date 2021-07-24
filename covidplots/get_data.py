@@ -188,7 +188,7 @@ def read_data(filename, region):
         pass
     dt_index = pd.to_datetime(b.columns)
     data = b.T
-    data = data.reindex(dt_index)
+    data.index = dt_index
 
     # There are few countries that need reformatting
     if region not in ["usa", "us", "worst_usa"]:
