@@ -48,9 +48,6 @@ ABB = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
        "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
 STATES_ABB = dict(zip(STATES,ABB))
 
-ALL_COUNTRIES = ['Brazil','Costa Rica','El Salvador','Germany','Iran',
-                 'Italy','South Korea','Mexico','Russia','Spain','Sweden','US']
-
 EU_COUNTRIES = ['Austria','Belgium','Bulgaria','Croatia','Cyprus','Czechia',
                 'Denmark','Estonia','Finland','France','Germany','Greece',
                 'Hungary','Ireland','Italy','Latvia','Lithuania','Luxembourg',
@@ -196,19 +193,14 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
     else:
         dailydata = data.diff()
     
-    if region in ["world", "global", "latin"]:
-        subplots = (3, 4)
+    if region == "latin":
+        subplots = (4,5)
         figsize = (18, 9)
         lw = 1.25
         labelsize = "small"
         fontsize = "medium"
-        if region in ["world", "global"]:
-            statenations = ALL_COUNTRIES
-            filename = f"global_new_{lbl}.pdf"
-        else:
-            statenations = LATIN_COUNTRIES
-            filename = f"latin_new_{lbl}.pdf"
-            subplots = (4,5)
+        statenations = LATIN_COUNTRIES
+        filename = f"latin_new_{lbl}.pdf"
     elif region == "usa":
         subplots = (5, 10)
         figsize = (20, 9)
@@ -603,7 +595,7 @@ if __name__ == "__main__":
     parser.add_argument('--regions', nargs='+')
     args = parser.parse_args()
     
-    allowed_regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_global", "worst_world"]
+    allowed_regions = ["usa", "latin", "eu_vs_usa", "worst_usa", "worst_global", "worst_world"]
     if args.regions is None:
         regions = allowed_regions
     else:
