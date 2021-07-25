@@ -597,7 +597,7 @@ if __name__ == "__main__":
     
     allowed_regions = ["usa", "latin", "eu_vs_usa", "worst_usa", "worst_global", "worst_world"]
     if args.regions is None:
-        regions = allowed_regions
+        regions = allowed_regions[:-1]
     else:
         regions = []
         for item in args.regions:
