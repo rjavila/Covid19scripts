@@ -235,8 +235,8 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
         filename = f"EU_vs_USA_{lbl}.pdf"
     elif region in ["worst_usa", "worst_global", "worst_world"]:
         if vax is True:
-            avg_fully = fully.rolling(7, center=True, min_periods=2).mean()
-            avg_partial = partial.rolling(7, center=True, min_periods=2).mean()
+            avg_fully = fully.rolling(7, center=False, min_periods=2).mean()
+            avg_partial = partial.rolling(7, center=False, min_periods=2).mean()
             total_fully = fully.sum()
             # Only consider countries with population > 5M
             large = pops.columns[(pops > 5000000).all()].values
@@ -257,7 +257,7 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
                 filename = f"best_global_{lbl}.pdf"
                 plottitle = "fully vaccinated (only countries > 5M)"
         else:
-            avg = dailydata.rolling(7, center=True, min_periods=2).mean()
+            avg = dailydata.rolling(7, center=False, min_periods=2).mean()
             data_sorted = avg.T.sort_values(avg.index[-1], ascending=False).T
             statenations = data_sorted.iloc[:, :10].columns.values
             if region == "worst_usa":
@@ -273,14 +273,14 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
         raise KeyError("Region {region} not in acceptable values")
 
     if vax is True:
-        avg_fully = fully.rolling(7, center=True, min_periods=2).mean()
-        avg_partial = partial.rolling(7, center=True, min_periods=2).mean()
+        avg_fully = fully.rolling(7, center=False, min_periods=2).mean()
+        avg_partial = partial.rolling(7, center=False, min_periods=2).mean()
         avgs = [avg_fully]
         dailydatas = [fully]
         #avgs = [avg_partial, avg_fully]
         #dailydatas = [partial, fully]
     else:
-        avg = dailydata.rolling(7, center=True, min_periods=2).mean()
+        avg = dailydata.rolling(7, center=False, min_periods=2).mean()
         avgs = [avg]
         dailydatas = [dailydata]
     fig, axes = plt.subplots(subplots[0], subplots[1],
