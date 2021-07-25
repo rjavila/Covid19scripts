@@ -48,9 +48,6 @@ ABB = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
        "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
 STATES_ABB = dict(zip(STATES,ABB))
 
-ALL_COUNTRIES = ['Brazil','Costa Rica','El Salvador','Germany','Iran',
-                 'Italy','South Korea','Mexico','Russia','Spain','Sweden','US']
-
 EU_COUNTRIES = ['Austria','Belgium','Bulgaria','Croatia','Cyprus','Czechia',
                 'Denmark','Estonia','Finland','France','Germany','Greece',
                 'Hungary','Ireland','Italy','Latvia','Lithuania','Luxembourg',
@@ -196,19 +193,14 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
     else:
         dailydata = data.diff()
     
-    if region in ["world", "global", "latin"]:
-        subplots = (3, 4)
+    if region == "latin":
+        subplots = (4,5)
         figsize = (18, 9)
         lw = 1.25
         labelsize = "small"
         fontsize = "medium"
-        if region in ["world", "global"]:
-            statenations = ALL_COUNTRIES
-            filename = f"global_new_{lbl}.pdf"
-        else:
-            statenations = LATIN_COUNTRIES
-            filename = f"latin_new_{lbl}.pdf"
-            subplots = (4,5)
+        statenations = LATIN_COUNTRIES
+        filename = f"latin_new_{lbl}.pdf"
     elif region == "usa":
         subplots = (5, 10)
         figsize = (20, 9)
@@ -235,8 +227,8 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
         filename = f"EU_vs_USA_{lbl}.pdf"
     elif region in ["worst_usa", "worst_global", "worst_world"]:
         if vax is True:
-            avg_fully = fully.rolling(7, center=True, min_periods=2).mean()
-            avg_partial = partial.rolling(7, center=True, min_periods=2).mean()
+            avg_fully = fully.rolling(7, center=False, min_periods=2).mean()
+            avg_partial = partial.rolling(7, center=False, min_periods=2).mean()
             total_fully = fully.sum()
             # Only consider countries with population > 5M
             large = pops.columns[(pops > 5000000).all()].values
@@ -257,7 +249,7 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
                 filename = f"best_global_{lbl}.pdf"
                 plottitle = "fully vaccinated (only countries > 5M)"
         else:
-            avg = dailydata.rolling(7, center=True, min_periods=2).mean()
+            avg = dailydata.rolling(7, center=False, min_periods=2).mean()
             data_sorted = avg.T.sort_values(avg.index[-1], ascending=False).T
             statenations = data_sorted.iloc[:, :10].columns.values
             if region == "worst_usa":
@@ -273,14 +265,14 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
         raise KeyError("Region {region} not in acceptable values")
 
     if vax is True:
-        avg_fully = fully.rolling(7, center=True, min_periods=2).mean()
-        avg_partial = partial.rolling(7, center=True, min_periods=2).mean()
+        avg_fully = fully.rolling(7, center=False, min_periods=2).mean()
+        avg_partial = partial.rolling(7, center=False, min_periods=2).mean()
         avgs = [avg_fully]
         dailydatas = [fully]
         #avgs = [avg_partial, avg_fully]
         #dailydatas = [partial, fully]
     else:
-        avg = dailydata.rolling(7, center=True, min_periods=2).mean()
+        avg = dailydata.rolling(7, center=False, min_periods=2).mean()
         avgs = [avg]
         dailydatas = [dailydata]
     fig, axes = plt.subplots(subplots[0], subplots[1],
@@ -603,9 +595,9 @@ if __name__ == "__main__":
     parser.add_argument('--regions', nargs='+')
     args = parser.parse_args()
     
-    allowed_regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_global", "worst_world"]
+    allowed_regions = ["usa", "latin", "eu_vs_usa", "worst_usa", "worst_global", "worst_world"]
     if args.regions is None:
-        regions = allowed_regions
+        regions = allowed_regions[:-1]
     else:
         regions = []
         for item in args.regions:

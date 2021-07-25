@@ -2,3 +2,4 @@
 **__pycache__/
 covidplots/covid_data/
 covidplots/plots/
+*.egg-info/
