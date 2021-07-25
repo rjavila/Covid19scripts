@@ -107,15 +107,13 @@ def read_vaccine_data(filename, region):
     else:
         data = pd.read_csv(filename)
         data = fix_owid_df(data)
-        regions = ["Africa", "Asia", "European Union", "Europe", "North America", "Oceania", "South America", "World", "United Kingdom"]
-        data.drop(data.loc[data["location"].isin(regions)].index, inplace=True)
         pops0 = pd.read_csv("geo_pop_data/Census_data_2020_world_regions.csv", skiprows=1)
         pops0.drop_duplicates(subset="Country", inplace=True) 
         pops0.drop(columns=['Region', 'Year', 'Area (sq. km.)',
                'Density (persons per sq. km.)'], inplace=True)
         pops0.set_index("Country", inplace=True)
         pops = pops0.T
-        pops = fix_census_df(pops)
+        pops = fix_census_df(pops, countries=list(set(data["location"])))
 
     data["date"] = pd.to_datetime(data["date"])
 
@@ -195,7 +193,7 @@ def read_data(filename, region):
     # There are few countries that need reformatting
     if region not in ["usa", "us", "worst_usa"]:
         data = fix_jhu_df(data)
-        pops = fix_census_df(pops)
+        pops = fix_census_df(pops, countries=list(data.columns))
 
     return data, pops
 

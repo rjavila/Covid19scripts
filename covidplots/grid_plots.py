@@ -41,6 +41,12 @@ STATES = ['Alabama','Alaska','Arizona','Arkansas','California',
           'Rhode Island','South Carolina','South Dakota','Tennessee',
           'Texas','Utah','Vermont','Virginia','Washington',
           'West Virginia','Wisconsin','Wyoming']
+ABB = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", 
+       "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", 
+       "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", 
+       "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", 
+       "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+STATES_ABB = dict(zip(STATES,ABB))
 
 ALL_COUNTRIES = ['Brazil','Costa Rica','El Salvador','Germany','Iran',
                  'Italy','South Korea','Mexico','Russia','Spain','Sweden','US']
@@ -134,12 +140,13 @@ def rainbow_text(x, y, strings, colors, styles=None, weights=None,
             y = bbox.y1
     return bbox
 
-def grid_plot(data, region, vax=False, outdir="plots", deaths=False, 
+def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False, 
               *args, **kwargs):
     """
     Make subplot grid plots for each state/country of interest in list.
     Args:
         data (:obj:`pandas.DataFrame`): Covid statistics on region of interest.
+        pops (:obj:`pandas.DataFrame`): Population statistics on region of interest.
         region (str): Country/state of interest. Acceptable values are 'world', 
             'usa', 'latin', 'eu_vs_usa', 'worst_usa', 'worst_global'.
         outdir (str): Name of directory to save plots to.
@@ -230,8 +237,17 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
         if vax is True:
             avg_fully = fully.rolling(7, center=True, min_periods=2).mean()
             avg_partial = partial.rolling(7, center=True, min_periods=2).mean()
-            fully_sorted = avg_fully.T.sort_values(avg_fully.index[-1], ascending=False).T
-            partial_sorted = avg_partial.T.sort_values(avg_partial.index[-1], ascending=False).T
+            total_fully = fully.sum()
+            # Only consider countries with population > 5M
+            large = pops.columns[(pops > 5000000).all()].values
+            percvax = total_fully/pops * 100.
+            percvax = percvax[large]
+            if region == "worst_usa":
+                fully_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
+            else:
+                fully_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
+                #fully_sorted = avg_fully.T.sort_values(avg_fully.index[-1], ascending=False).T
+            #partial_sorted = avg_partial.T.sort_values(avg_partial.index[-1], ascending=False).T
 #            fully_statenations = fully_sorted.iloc[:, :10].columns.values
 #            partial_statenations = partial_sorted.iloc[:, :10].columns.values
             statenations = fully_sorted.iloc[:, :10].columns.values
@@ -239,6 +255,7 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                 filename = f"best_usa_{lbl}.pdf"
             else:
                 filename = f"best_global_{lbl}.pdf"
+                plottitle = "fully vaccinated (only countries > 5M)"
         else:
             avg = dailydata.rolling(7, center=True, min_periods=2).mean()
             data_sorted = avg.T.sort_values(avg.index[-1], ascending=False).T
@@ -302,11 +319,22 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                 max_avg = np.nanmax(avg[statenations[i]])
                 ax.set_ylim(0, max_avg+0.08*max_avg)
                 if vax is True:
+                    try:
+                        percvax = int(total/pops[statenations[i]]*100.)
+                    except:
+                        print(f"!!! could not get population for {statenations[i]}")
+                        percvax = "?"
                     ax.set_xlim(datetime.date(2021, 1, 1))
+                    if region == "usa":
+                        region_name = STATES_ABB[statenations[i]]
+                    else:
+                        region_name = statenations[i]
+                    ax.annotate(f"{region_name}, total: {total:,} ({percvax}%)", (0.035, 1.05), 
+                        xycoords="axes fraction", size=fontsize)
                 else:
                     ax.set_xlim(datetime.date(2020, 2, 27))
-                ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
-                    xycoords="axes fraction", size=fontsize)
+                    ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
+                        xycoords="axes fraction", size=fontsize)
                 words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
                 colors = ["black", LAST_C, "black", CONTRAST_C]
                 weights = ["normal", "normal", "normal", "bold"]
@@ -341,9 +369,10 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                 else:
                     ax.set_xlim(datetime.date(2020, 2, 21), dailydata.index[-1]+datetime.timedelta(days=7))
                 # Get the maximum number of intervals/10,000s of cases so far
-                lbl_days_thresh = 15
-                lbl_d_thresh = 6
-                lbl_num_thresh = 3
+                ndays_thresh = {"days": 15, "d": 6, "num": 3}
+                num_thresh = {"len1": {"long": 10, "tiny": 7}, "len2": {"long": 14, "tiny": 11},
+                              "len3": {"long": 14, "tiny": 11},  
+                              "extreme": {"fontsmall": 6, "fontxsmall": 5, "xoff_2": -1, "xoff": -6}}
                 interval0 = 100
                 interval0_lbl = "100"
                 if lbl == "deaths":
@@ -355,10 +384,11 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     interval = 10000000
                     unit = 1000000
                     vline_lbl = " million"
-                    vline_lbl_tiny = " million"
-                    lbl_days_thresh = 5
-                    lbl_d_thresh = 4
-                    lbl_num_thresh = 3
+                    vline_lbl_tiny = " mil"
+                    ndays_thresh = {"days": 5, "d": 4, "num": 3}
+                    num_thresh = {"len1": {"long": 7, "tiny": 4}, "len2": {"long": 7, "tiny": 4},
+                                  "len3": {"long": 7, "tiny": 4}, 
+                                  "extreme": {"fontsmall": 6, "fontxsmall": 5, "xoff_2": -1, "xoff": -6}}
                     interval0 = 1e6
                     interval0_lbl = "1 million"
                 else:
@@ -406,11 +436,11 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     # Depending on number of days in the interval, the time unit
                     # will be days, d, no unit at all, or no number at all
                     middle_i = vline_inds[j] + int(ndays[j]/2)
-                    if ndays[j] > lbl_days_thresh: 
+                    if ndays[j] > ndays_thresh["days"]: 
                         elapsed_lbl = f"{ndays[j]} days"
-                    elif ndays[j] >= lbl_d_thresh:
+                    elif ndays[j] >= ndays_thresh["d"]:
                         elapsed_lbl = f"{ndays[j]}d"
-                    elif ndays[j] >= lbl_num_thresh:
+                    elif ndays[j] >= ndays_thresh["num"]:
                         elapsed_lbl = f"{ndays[j]}"
                     else:
                         elapsed_lbl = ""
@@ -433,30 +463,24 @@ def grid_plot(data, region, vax=False, outdir="plots", deaths=False,
                     if skip == True:
                         lab = ""
                         skip = False
-                    elif len(number) == 1:
-                        if ndays[j] > 10 or j == len(vline_inds)-2:
-                            lab = f"{number}{vline_lbl}"
-                        elif ndays[j] < 7:
-                            lab = f"{number}"
-                        else:
-                            lab = f"{number}{vline_lbl_tiny}"
+                    lenkey = f"len{len(number)}"
+                    if j == len(vline_inds)-2:
+                        lab = f"{number}{vline_lbl_tiny}"
+                    elif ndays[j] > num_thresh[lenkey]["long"]: 
+                        lab = f"{number}{vline_lbl}"
+                    elif ndays[j] > num_thresh[lenkey]["tiny"]:
+                        lab = f"{number}{vline_lbl_tiny}"
                     else:
-                        if j == len(vline_inds)-2:
-                            lab = f"{number}{vline_lbl_tiny}"
-                        elif ndays[j] > 14:
-                            lab = f"{number}{vline_lbl}"
-                        elif ndays[j] < 11:
-                            lab = f"{number}"
-                            if ndays[j] < 5:
-                                ant_kwargs = {"size": 8}
-                            elif ndays[j] < 6:
-                                ant_kwargs = {"size": 8.5}
-                            if number[0] == "2":
-                                time_off = -1
-                            else:
-                                time_off = -6
+                        lab = f"{number}"
+                        if ndays[j] < num_thresh["extreme"]["fontxsmall"]:
+                            ant_kwargs = {"size": 8}
+                        elif ndays[j] < num_thresh["extreme"]["fontsmall"]:
+                            ant_kwargs = {"size": 8.5}
+                        if number[0] == "2":
+                            time_off = num_thresh["extreme"]["xoff_2"]
                         else:
-                            lab = f"{number}{vline_lbl_tiny}"
+                            time_off = num_thresh["extreme"]["xoff"]
+
                     if j == 0:
                         lab = f"{interval0_lbl}"
                     ax.annotate(lab, 
@@ -579,7 +603,7 @@ if __name__ == "__main__":
     parser.add_argument('--regions', nargs='+')
     args = parser.parse_args()
     
-    allowed_regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_world"]
+    allowed_regions = ["world", "usa", "latin", "eu_vs_usa", "worst_usa", "worst_global", "worst_world"]
     if args.regions is None:
         regions = allowed_regions
     else:
@@ -600,6 +624,6 @@ if __name__ == "__main__":
             usa_mort = mortality_rate("US", data, data2)
             eu_mort = mortality_rate("EU", data, data2)
             mort = {"US": usa_mort, "EU": eu_mort}
-            grid_plot(data, item, deaths=args.deaths, mort=mort, vax=args.vax)
+            grid_plot(data, pops, item, deaths=args.deaths, mort=mort, vax=args.vax)
         else:
-            grid_plot(data, item, deaths=args.deaths, vax=args.vax)
+            grid_plot(data, pops, item, deaths=args.deaths, vax=args.vax)
