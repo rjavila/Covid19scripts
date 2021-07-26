@@ -231,12 +231,12 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
             avg_partial = partial.rolling(7, center=False, min_periods=2).mean()
             total_fully = fully.sum()
             # Only consider countries with population > 5M
-            large = pops.columns[(pops > 5000000).all()].values
             percvax = total_fully/pops * 100.
-            percvax = percvax[large]
             if region == "worst_usa":
                 fully_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
             else:
+                large = pops.columns[(pops > 5000000).all()].values
+                percvax = percvax[large]
                 fully_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
                 #fully_sorted = avg_fully.T.sort_values(avg_fully.index[-1], ascending=False).T
             #partial_sorted = avg_partial.T.sort_values(avg_partial.index[-1], ascending=False).T
