@@ -17,7 +17,6 @@ Requirements
 Besides the python dependencies, this script requires the FFMPEG
 be installed on the system. 
 '''
-from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import pandas as pd
@@ -27,6 +26,7 @@ import argparse
 from copy import copy
 from astropy.time import Time
 import sys
+import os
 
 from get_data import download_data
 #Colormap to use
@@ -120,24 +120,34 @@ def fig_setup(figtype):
 
 
 #Function that makes cloropleth
-def update_percentile(col):
+def make_plots(data,plot_type):
 
-    dt1 = Time.now()
-    fig1 = data.plot(column=col,cmap=CMAP,scheme='percentiles',
-              classification_kwds={'pct':[0,20,40,60,70,80,100]},
-              linewidth=0.25,ax=ax1,edgecolor='0.5')
-    date_text.set_text(f'{col[:10]}')
-    print(f'{col[:10]} {(Time.now()-dt1).sec:5.2f}')
+    for col in data.columns[5:]:
+    
+        outputfile = f'plots/county_maps/{plot_type}_{col[:10]}.png'
 
-def update_percapita(col):
+        if not os.path.exists(f'{outputfile}'):
 
-    dt1 = Time.now()
-    fig2 = data.plot(column=col,cmap=CMAP,
-              norm=colors.LogNorm(vmin=VMIN,vmax=VMAX),
-              linewidth=0.25,ax=ax2,edgecolor='0.5')
-    date_text.set_text(f'{col[:10]}')
-    print(f'{col[:10]} {(Time.now()-dt1).sec:5.2f}')
+            dt1 = Time.now()
+            fig,ax,date_text = fig_setup(plot_type)
 
+            if plot_type == 'percentile':
+                ax = data.plot(column=col,cmap=CMAP,scheme='percentiles',
+                               classification_kwds={'pct':[0,20,40,60,70,80,100]},
+                               linewidth=0.25,ax=ax,edgecolor='0.5')
+           
+            else:
+                ax = data.plot(column=col,cmap=CMAP,
+                               norm=colors.LogNorm(vmin=VMIN,vmax=VMAX),
+                               linewidth=0.25,ax=ax,edgecolor='0.5')
+
+            fig.tight_layout()
+            fig.savefig(f'{outputfile}',dpi=200)
+            plt.close(fig)
+            print(f'Created {outputfile} {(Time.now()-dt1).sec:5.2f}')
+
+        else:
+            print(f'Skipping {outputfile}')
 
 if __name__ == "__main__":
 
@@ -152,7 +162,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.percentile or args.percapita:
-        dowload_status = download_data('usa')
         data = prepare_data()
     else:
         sys.exit('Please choose at least one of "percentile" and "percapita" to plot.')
@@ -160,19 +169,8 @@ if __name__ == "__main__":
 
     if args.percentile:
 
-        fig1,ax1,date_text = fig_setup('percentile')
-        ani1 = FuncAnimation(fig1,update_percentile,data.columns[5:],
-                             interval=0,cache_frame_data=False)
-        ani1.save('plots/counties_worst.mp4',writer='ffmpeg',
-                  fps=1,dpi=200)
-        plt.close(fig1)
+        make_plots(data,'percentile')
 
     if args.percapita:
 
-        fig2,ax2,date_text = fig_setup('percapita')
-        ani2 = FuncAnimation(fig2,update_percapita,data.columns[5:],
-                             interval=0,cache_frame_data=False)
-        ani2.save('plots/counties_percapita.mp4',writer='ffmpeg',
-                  fps=1,dpi=200)
-        plt.close(fig2)
-
+        make_plots(data,'percapita')
