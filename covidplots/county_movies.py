@@ -12,6 +12,10 @@ This script takes the US county shapefiles and population data and
 merges them into a single geopandas dataframe. This is then combined 
 with the COVID19 data to make the maps.
 
+The ffmpeg magic incantation that works on Apple Silicon is:
+
+    > ffmpeg -r 1 -f image2 -pattern_type glob -i '*.jpg' -vcodec libx264 -an outfile.mp4
+
 Requirements
 ------------
 Besides the python dependencies, this script requires the FFMPEG
@@ -124,7 +128,7 @@ def make_plots(data,plot_type):
 
     for col in data.columns[5:]:
     
-        outputfile = f'plots/county_maps/{plot_type}_{col[:10]}.png'
+        outputfile = f'plots/county_maps/{plot_type}_{col[:10]}.jpg'
 
         if not os.path.exists(f'{outputfile}'):
 
@@ -135,11 +139,13 @@ def make_plots(data,plot_type):
                 ax = data.plot(column=col,cmap=CMAP,scheme='percentiles',
                                classification_kwds={'pct':[0,20,40,60,70,80,100]},
                                linewidth=0.25,ax=ax,edgecolor='0.5')
+                date_text.set_text(f'{col[:10]}')
            
             else:
                 ax = data.plot(column=col,cmap=CMAP,
                                norm=colors.LogNorm(vmin=VMIN,vmax=VMAX),
                                linewidth=0.25,ax=ax,edgecolor='0.5')
+                date_text.set_text(f'{col[:10]}')
 
             fig.tight_layout()
             fig.savefig(f'{outputfile}',dpi=200)
