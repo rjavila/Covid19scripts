@@ -102,7 +102,7 @@ def read_vaccine_data(filename, region):
         data = pd.read_csv(filename)
         data = fix_owid_df(data, world=False)
         data.drop(data.loc[data["location"] == "United States"].index, inplace=True)
-        pops0 = pd.read_csv('geo_pop_data/nst-est2019-01.csv',index_col='State')
+        pops0 = pd.read_csv('geo_pop_data/nst-pop2020.csv',index_col='State')
         pops = pops0.T
     else:
         data = pd.read_csv(filename)
@@ -169,7 +169,7 @@ def read_data(filename, region):
                     'Country_Region','Lat','Long_','Combined_Key'], 
                     inplace=True)
         b = a.groupby('Province_State').sum()
-        pops0 = pd.read_csv('geo_pop_data/nst-est2019-01.csv',index_col='State')
+        pops0 = pd.read_csv('geo_pop_data/nst-pop2020.csv',index_col='State')
         pops = pops0.T
     else:
         a = pd.read_csv(filename)
