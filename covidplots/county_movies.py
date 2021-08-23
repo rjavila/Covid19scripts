@@ -145,7 +145,7 @@ def make_plots(data,plot_type):
                 date_text.set_text(f'{col[:10]}')
            
             else:
-                ax = data.plot(column=col,cmap=cmap,
+                ax = data.plot(column=col,cmap=cmap.cmap,
                                norm=colors.LogNorm(vmin=VMIN,vmax=VMAX),
                                linewidth=0.25,ax=ax,edgecolor='0.5')
                 date_text.set_text(f'{col[:10]}')
