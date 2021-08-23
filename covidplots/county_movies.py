@@ -41,7 +41,7 @@ VMAX = 50
 
 def prepare_data():
     #Reading in government tables.
-    allpop = pd.read_csv('geo_pop_data/county_pop.csv') 
+    allpop = pd.read_csv('geo_pop_data/co-est2020.csv') 
     map_df = gpd.read_file('geo_pop_data/cb_2019_us_county_500k.shp')
 
     #Keep only the 50 states and DC
@@ -107,8 +107,6 @@ def fig_setup(figtype):
 
     if figtype == 'percentile':
 
-        #sm = plt.cm.ScalarMappable(cmap=CMAPNAME,
-        #                    norm=plt.Normalize(vmin=0,vmax=100))
         sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap(CMAPNAME,10),
                             norm=plt.Normalize(vmin=0,vmax=100))
         cbar = fig.colorbar(sm,orientation='horizontal',label='Percentile',
@@ -136,11 +134,13 @@ def make_plots(data,plot_type):
 
             dt1 = datetime.now()
             fig,ax,cmap,date_text = fig_setup(plot_type)
-            plt.cm.register_cmap(name='covidplots',cmap=cmap.cmap)
+
+            if 'covidplots' not in plt.colormaps():
+                plt.cm.register_cmap(name='covidplots',cmap=cmap.cmap)
 
             if plot_type == 'percentile':
                 ax = data.plot(column=col,cmap='covidplots',scheme='percentiles',
-                               classification_kwds={'pct':[0,20,40,60,70,80,100]},
+                               classification_kwds={'pct':[0,10,20,30,40,50,60,70,80,90,100]},
                                linewidth=0.25,ax=ax,edgecolor='0.5')
                 date_text.set_text(f'{col[:10]}')
            
