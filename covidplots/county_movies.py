@@ -28,13 +28,13 @@ import geopandas as gpd
 import numpy as np
 import argparse
 from copy import copy
-from astropy.time import Time
+from datetime import datetime
 import sys
 import os
 
-from get_data import download_data
+from covidplots.get_data import download_data
 #Colormap to use
-CMAP = 'Blues'
+CMAPNAME = 'Blues'
 VMIN = 0.001
 VMAX = 50
 
@@ -107,7 +107,9 @@ def fig_setup(figtype):
 
     if figtype == 'percentile':
 
-        sm = plt.cm.ScalarMappable(cmap=CMAP,
+        #sm = plt.cm.ScalarMappable(cmap=CMAPNAME,
+        #                    norm=plt.Normalize(vmin=0,vmax=100))
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap(CMAPNAME,10),
                             norm=plt.Normalize(vmin=0,vmax=100))
         cbar = fig.colorbar(sm,orientation='horizontal',label='Percentile',
                             fraction=0.025,pad=0.1,aspect=30)
@@ -115,12 +117,12 @@ def fig_setup(figtype):
 
     elif figtype == 'percapita':
 
-        sm = plt.cm.ScalarMappable(cmap=CMAP,
+        sm = plt.cm.ScalarMappable(cmap=CMAPNAME,
                            norm=colors.LogNorm(vmin=VMIN,vmax=VMAX))
         cbar = fig.colorbar(sm,orientation='horizontal',label='Cases per 1000',
                             fraction=0.025,pad=0.1,aspect=30)
 
-    return fig,ax,date_text
+    return fig,ax,sm,date_text
 
 
 #Function that makes cloropleth
@@ -132,17 +134,18 @@ def make_plots(data,plot_type):
 
         if not os.path.exists(f'{outputfile}'):
 
-            dt1 = Time.now()
-            fig,ax,date_text = fig_setup(plot_type)
+            dt1 = datetime.now()
+            fig,ax,cmap,date_text = fig_setup(plot_type)
+            plt.cm.register_cmap(name='covidplots',cmap=cmap.cmap)
 
             if plot_type == 'percentile':
-                ax = data.plot(column=col,cmap=CMAP,scheme='percentiles',
+                ax = data.plot(column=col,cmap='covidplots',scheme='percentiles',
                                classification_kwds={'pct':[0,20,40,60,70,80,100]},
                                linewidth=0.25,ax=ax,edgecolor='0.5')
                 date_text.set_text(f'{col[:10]}')
            
             else:
-                ax = data.plot(column=col,cmap=CMAP,
+                ax = data.plot(column=col,cmap=cmap,
                                norm=colors.LogNorm(vmin=VMIN,vmax=VMAX),
                                linewidth=0.25,ax=ax,edgecolor='0.5')
                 date_text.set_text(f'{col[:10]}')
@@ -150,7 +153,7 @@ def make_plots(data,plot_type):
             fig.tight_layout()
             fig.savefig(f'{outputfile}',dpi=200)
             plt.close(fig)
-            print(f'Created {outputfile} {(Time.now()-dt1).sec:5.2f}')
+            print(f'Created {outputfile} {(datetime.now()-dt1).total_seconds():5.2f}')
 
         else:
             print(f'Skipping {outputfile}')
