@@ -12,12 +12,15 @@ This script takes the US county shapefiles and population data and
 merges them into a single geopandas dataframe. This is then combined 
 with the COVID19 data to make the maps.
 
+The ffmpeg magic incantation that works on Apple Silicon is:
+
+    > ffmpeg -r 1 -f image2 -pattern_type glob -i '*.jpg' -vcodec libx264 -an outfile.mp4
+
 Requirements
 ------------
 Besides the python dependencies, this script requires the FFMPEG
 be installed on the system. 
 '''
-from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import pandas as pd
@@ -25,19 +28,20 @@ import geopandas as gpd
 import numpy as np
 import argparse
 from copy import copy
-from astropy.time import Time
+from datetime import datetime
 import sys
+import os
 
-from get_data import download_data
+from covidplots.get_data import download_data
 #Colormap to use
-CMAP = 'Blues'
+CMAPNAME = 'Blues'
 VMIN = 0.001
 VMAX = 50
 
 
 def prepare_data():
     #Reading in government tables.
-    allpop = pd.read_csv('geo_pop_data/county_pop.csv') 
+    allpop = pd.read_csv('geo_pop_data/co-est2020.csv') 
     map_df = gpd.read_file('geo_pop_data/cb_2019_us_county_500k.shp')
 
     #Keep only the 50 states and DC
@@ -103,7 +107,7 @@ def fig_setup(figtype):
 
     if figtype == 'percentile':
 
-        sm = plt.cm.ScalarMappable(cmap=CMAP,
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.get_cmap(CMAPNAME,10),
                             norm=plt.Normalize(vmin=0,vmax=100))
         cbar = fig.colorbar(sm,orientation='horizontal',label='Percentile',
                             fraction=0.025,pad=0.1,aspect=30)
@@ -111,33 +115,48 @@ def fig_setup(figtype):
 
     elif figtype == 'percapita':
 
-        sm = plt.cm.ScalarMappable(cmap=CMAP,
+        sm = plt.cm.ScalarMappable(cmap=CMAPNAME,
                            norm=colors.LogNorm(vmin=VMIN,vmax=VMAX))
         cbar = fig.colorbar(sm,orientation='horizontal',label='Cases per 1000',
                             fraction=0.025,pad=0.1,aspect=30)
 
-    return fig,ax,date_text
+    return fig,ax,sm,date_text
 
 
 #Function that makes cloropleth
-def update_percentile(col):
+def make_plots(data,plot_type):
 
-    dt1 = Time.now()
-    fig1 = data.plot(column=col,cmap=CMAP,scheme='percentiles',
-              classification_kwds={'pct':[0,20,40,60,70,80,100]},
-              linewidth=0.25,ax=ax1,edgecolor='0.5')
-    date_text.set_text(f'{col[:10]}')
-    print(f'{col[:10]} {(Time.now()-dt1).sec:5.2f}')
+    for col in data.columns[5:]:
+    
+        outputfile = f'plots/county_maps/{plot_type}_{col[:10]}.jpg'
 
-def update_percapita(col):
+        if not os.path.exists(f'{outputfile}'):
 
-    dt1 = Time.now()
-    fig2 = data.plot(column=col,cmap=CMAP,
-              norm=colors.LogNorm(vmin=VMIN,vmax=VMAX),
-              linewidth=0.25,ax=ax2,edgecolor='0.5')
-    date_text.set_text(f'{col[:10]}')
-    print(f'{col[:10]} {(Time.now()-dt1).sec:5.2f}')
+            dt1 = datetime.now()
+            fig,ax,cmap,date_text = fig_setup(plot_type)
 
+            if 'covidplots' not in plt.colormaps():
+                plt.cm.register_cmap(name='covidplots',cmap=cmap.cmap)
+
+            if plot_type == 'percentile':
+                ax = data.plot(column=col,cmap='covidplots',scheme='percentiles',
+                               classification_kwds={'pct':[0,10,20,30,40,50,60,70,80,90,100]},
+                               linewidth=0.25,ax=ax,edgecolor='0.5')
+                date_text.set_text(f'{col[:10]}')
+           
+            else:
+                ax = data.plot(column=col,cmap=cmap,
+                               norm=colors.LogNorm(vmin=VMIN,vmax=VMAX),
+                               linewidth=0.25,ax=ax,edgecolor='0.5')
+                date_text.set_text(f'{col[:10]}')
+
+            fig.tight_layout()
+            fig.savefig(f'{outputfile}',dpi=200)
+            plt.close(fig)
+            print(f'Created {outputfile} {(datetime.now()-dt1).total_seconds():5.2f}')
+
+        else:
+            print(f'Skipping {outputfile}')
 
 if __name__ == "__main__":
 
@@ -152,7 +171,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.percentile or args.percapita:
-        dowload_status = download_data('usa')
         data = prepare_data()
     else:
         sys.exit('Please choose at least one of "percentile" and "percapita" to plot.')
@@ -160,19 +178,8 @@ if __name__ == "__main__":
 
     if args.percentile:
 
-        fig1,ax1,date_text = fig_setup('percentile')
-        ani1 = FuncAnimation(fig1,update_percentile,data.columns[5:],
-                             interval=0,cache_frame_data=False)
-        ani1.save('plots/counties_worst.mp4',writer='ffmpeg',
-                  fps=1,dpi=200)
-        plt.close(fig1)
+        make_plots(data,'percentile')
 
     if args.percapita:
 
-        fig2,ax2,date_text = fig_setup('percapita')
-        ani2 = FuncAnimation(fig2,update_percapita,data.columns[5:],
-                             interval=0,cache_frame_data=False)
-        ani2.save('plots/counties_percapita.mp4',writer='ffmpeg',
-                  fps=1,dpi=200)
-        plt.close(fig2)
-
+        make_plots(data,'percapita')
