@@ -137,8 +137,8 @@ def rainbow_text(x, y, strings, colors, styles=None, weights=None,
             y = bbox.y1
     return bbox
 
-def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False, 
-              *args, **kwargs):
+def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots", 
+              deaths=False, *args, **kwargs):
     """
     Make subplot grid plots for each state/country of interest in list.
     Args:
@@ -151,6 +151,10 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
     """
   
     eu_usa_pops = {"US": 328, "EU": 445} 
+    if fully is True or onedose is True:
+        vax = True
+    else:
+        vax = False
     if vax is True:
         BAR_C = "lightskyblue"
         CONTRAST_C = "royalblue"
@@ -175,9 +179,12 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
-    if vax is True:
+    if fully is True:
         lbl = "vax"
         plottitle = "fully vaccinated"
+    elif onedose is True:
+        lbl = "dose"
+        plottitle = "partially vaccinated"
     elif deaths is True:
         lbl = "deaths"
         plottitle = "deaths"
@@ -187,11 +194,11 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
 
     if vax is True:
         partialdata,fullydata = get_data.vax_by_region(data)
-        partial = partialdata.diff()
-        fully = fullydata.diff()
-        data = fullydata
-    else:
-        dailydata = data.diff()
+        if onedose is True:
+            data = partialdata
+        else:
+            data = fullydata
+    dailydata = data.diff()
     
     if region == "latin":
         subplots = (4,5)
@@ -210,14 +217,8 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
         fontsize = "x-small"
         filename = f"states_new_{lbl}.pdf"
     elif region == "eu_vs_usa":
-        if vax is True:
-            partialdata["EU"] = partialdata.loc[:,EU_COUNTRIES].sum(axis=1)
-            fullydata["EU"] = fullydata.loc[:,EU_COUNTRIES].sum(axis=1)
-            partial = partialdata.diff()
-            fully = fullydata.diff()
-        else:
-            data["EU"] = data.loc[:,EU_COUNTRIES].sum(axis=1)
-            dailydata = data.diff()
+        data["EU"] = data.loc[:,EU_COUNTRIES].sum(axis=1)
+        dailydata = data.diff()
         subplots = (2, 1)
         figsize = (15, 11)
         lw = 1.5
@@ -227,27 +228,27 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
         filename = f"EU_vs_USA_{lbl}.pdf"
     elif region in ["worst_usa", "worst_global", "worst_world"]:
         if vax is True:
-            avg_fully = fully.rolling(7, center=False, min_periods=2).mean()
-            avg_partial = partial.rolling(7, center=False, min_periods=2).mean()
-            total_fully = fully.sum()
+            avg = dailydata.rolling(7, center=False, min_periods=2).mean()
+            total_data = dailydata.sum()
             # Only consider countries with population > 5M
-            percvax = total_fully/pops * 100.
+            percvax = total_data/pops * 100.
             if region == "worst_usa":
-                fully_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
+                data_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
             else:
                 large = pops.columns[(pops > 5000000).all()].values
                 percvax = percvax[large]
-                fully_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
+                data_sorted = percvax.T.sort_values(percvax.index[-1], ascending=False).T
                 #fully_sorted = avg_fully.T.sort_values(avg_fully.index[-1], ascending=False).T
-            #partial_sorted = avg_partial.T.sort_values(avg_partial.index[-1], ascending=False).T
-#            fully_statenations = fully_sorted.iloc[:, :10].columns.values
-#            partial_statenations = partial_sorted.iloc[:, :10].columns.values
-            statenations = fully_sorted.iloc[:, :10].columns.values
+            #fully_statenations = fully_sorted.iloc[:, :10].columns.values
+            statenations = data_sorted.iloc[:, :10].columns.values
             if region == "worst_usa":
                 filename = f"best_usa_{lbl}.pdf"
             else:
                 filename = f"best_global_{lbl}.pdf"
-                plottitle = "fully vaccinated (only countries > 5M)"
+                if onedose is False:
+                    plottitle = "fully vaccinated (only countries > 5M)"
+                else:
+                    plottitle = "partially vaccinated (only countries > 5M)"
         else:
             avg = dailydata.rolling(7, center=False, min_periods=2).mean()
             data_sorted = avg.T.sort_values(avg.index[-1], ascending=False).T
@@ -264,17 +265,7 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
     else:
         raise KeyError("Region {region} not in acceptable values")
 
-    if vax is True:
-        avg_fully = fully.rolling(7, center=False, min_periods=2).mean()
-        avg_partial = partial.rolling(7, center=False, min_periods=2).mean()
-        avgs = [avg_fully]
-        dailydatas = [fully]
-        #avgs = [avg_partial, avg_fully]
-        #dailydatas = [partial, fully]
-    else:
-        avg = dailydata.rolling(7, center=False, min_periods=2).mean()
-        avgs = [avg]
-        dailydatas = [dailydata]
+    avg = dailydata.rolling(7, center=False, min_periods=2).mean()
     fig, axes = plt.subplots(subplots[0], subplots[1],
                              figsize=(figsize[0], figsize[1]),
                              sharex=True)
@@ -284,253 +275,250 @@ def grid_plot(data, pops, region, vax=False, outdir="plots", deaths=False,
     #daily_sorted = dailydata.reindex(dailydata.sum(axis=0).sort_values(ascending=False).index, axis=1)
 
     for i,ax in enumerate(axes.flatten()):
-        for k in range(len(avgs)):
-            dailydata = dailydatas[k]
-            if statenations[i] not in dailydata:
-                continue
-            avg = avgs[k]
-            ax.bar(dailydata.index, dailydata[statenations[i]], color=BAR_C, zorder=5)
-            ax.plot(avg[statenations[i]], c=CONTRAST_C, lw=lw, zorder=10)
-            
-            total = int(dailydata[statenations[i]].sum())
-            lastval = int(dailydata[statenations[i]][-1])
-            avglastval = int(avg[statenations[i]][-1])
-            
-            plt.gcf().autofmt_xdate(rotation=45, ha="center")
-            
-            ax.tick_params('both', labelsize=labelsize, length=3)
-            ax.get_yaxis().set_major_formatter(
-                matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
-            ax.yaxis.set_ticks_position('both')
-            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-            ax.xaxis.set_major_locator(months)
-            ax.yaxis.get_major_ticks()[0].label1.set_visible(False)
-            ax.yaxis.set_major_locator(plt.MaxNLocator(5))
-            
-            if region != "eu_vs_usa":
-                max_avg = np.nanmax(avg[statenations[i]])
-                ax.set_ylim(0, max_avg+0.08*max_avg)
-                if vax is True:
-                    try:
-                        percvax = int(total/pops[statenations[i]]*100.)
-                    except:
-                        print(f"!!! could not get population for {statenations[i]}")
-                        percvax = "?"
-                    ax.set_xlim(datetime.date(2021, 1, 1))
-                    if region == "usa":
-                        region_name = STATES_ABB[statenations[i]]
-                    else:
-                        region_name = statenations[i]
-                    ax.annotate(f"{region_name}, total: {total:,} ({percvax}%)", (0.035, 1.05), 
-                        xycoords="axes fraction", size=fontsize)
+        if statenations[i] not in dailydata:
+            continue
+        ax.bar(dailydata.index, dailydata[statenations[i]], color=BAR_C, zorder=5)
+        ax.plot(avg[statenations[i]], c=CONTRAST_C, lw=lw, zorder=10)
+        
+        total = int(dailydata[statenations[i]].sum())
+        lastval = int(dailydata[statenations[i]][-1])
+        avglastval = int(avg[statenations[i]][-1])
+        
+        plt.gcf().autofmt_xdate(rotation=45, ha="center")
+        
+        ax.tick_params('both', labelsize=labelsize, length=3)
+        ax.get_yaxis().set_major_formatter(
+            matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+        ax.yaxis.set_ticks_position('both')
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
+        ax.xaxis.set_major_locator(months)
+        ax.yaxis.get_major_ticks()[0].label1.set_visible(False)
+        ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+        
+        if region != "eu_vs_usa":
+            max_avg = np.nanmax(avg[statenations[i]])
+            ax.set_ylim(0, max_avg+0.08*max_avg)
+            if vax is True:
+                try:
+                    percvax = int(total/pops[statenations[i]]*100.)
+                except:
+                    print(f"!!! could not get population for {statenations[i]}")
+                    percvax = "?"
+                ax.set_xlim(datetime.date(2021, 1, 1))
+                if region == "usa":
+                    region_name = STATES_ABB[statenations[i]]
                 else:
-                    ax.set_xlim(datetime.date(2020, 2, 27))
-                    ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
-                        xycoords="axes fraction", size=fontsize)
-                words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
-                colors = ["black", LAST_C, "black", CONTRAST_C]
-                weights = ["normal", "normal", "normal", "bold"]
-                rainbow_text(0.035, .9, words, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, zorder=15)
+                    region_name = statenations[i]
+                ax.annotate(f"{region_name}, total: {total:,} ({percvax}%)", (0.035, 1.05), 
+                    xycoords="axes fraction", size=fontsize)
             else:
-                if vax is True:
-                    ax.set_xlim(datetime.date(2021, 1, 10), dailydata.index[-1]+datetime.timedelta(days=4))
-                    # Use the last 7 days (exluding last 4 days which are unreliable)
-                    # to estimate the growth in vax per day, then use that to determine
-                    # when country reaches 70 and 90% population vaccinated.
-                    x0 = 7
-                    total_minus4 = int(dailydata[statenations[i]][:-4].sum())
-                    recenty = avg[statenations[i]][-x0-4:-4].values
-                    recentx = np.arange(len(recenty))
-                    z = np.polyfit(recentx, recenty, 1)
-                    if z[0] < 0:
-                        z[0] = 0
-                    p = np.poly1d(z)
-                    pop = eu_usa_pops[statenations[i]] * 1e6
-                    perc70 = (pop * 0.7) - total_minus4
-                    perc90 = (pop * 0.9) - total_minus4
-                    x = np.arange(x0, x0+1095)
-                    emp = p(x)
-                    # Biden has stated a goal of 5 million doses a day. Let's say
-                    # this equates to 2.1 million people fully vaccinated a day.
-                    emp = np.where(emp > 2.1e6, 2.1e6, emp)
-                    cumul = np.cumsum(emp)
-                    ndays70 = int(np.where(cumul > perc70)[0][0]) 
-                    ndays90 = int(np.where(cumul > perc90)[0][0])
-                    perc70date = dailydata.index[-4] + datetime.timedelta(days=ndays70)
-                    perc90date = dailydata.index[-4] + datetime.timedelta(days=ndays90)
-                else:
-                    ax.set_xlim(datetime.date(2020, 2, 21), dailydata.index[-1]+datetime.timedelta(days=7))
-                # Get the maximum number of intervals/10,000s of cases so far
-                ndays_thresh = {"days": 15, "d": 6, "num": 3}
-                num_thresh = {"len1": {"long": 10, "tiny": 7}, "len2": {"long": 14, "tiny": 11},
-                              "len3": {"long": 14, "tiny": 11},  
+                ax.set_xlim(datetime.date(2020, 2, 27))
+                ax.annotate(f"{statenations[i]}, total: {total:,}", (0.035, 1.05), 
+                    xycoords="axes fraction", size=fontsize)
+            words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
+            colors = ["black", LAST_C, "black", CONTRAST_C]
+            weights = ["normal", "normal", "normal", "bold"]
+            rainbow_text(0.035, .9, words, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, zorder=15)
+        else:
+            if vax is True:
+                ax.set_xlim(datetime.date(2021, 1, 10), dailydata.index[-1]+datetime.timedelta(days=4))
+                # Use the last 7 days (exluding last 4 days which are unreliable)
+                # to estimate the growth in vax per day, then use that to determine
+                # when country reaches 70 and 90% population vaccinated.
+                x0 = 7
+                total_minus4 = int(dailydata[statenations[i]][:-4].sum())
+                recenty = avg[statenations[i]][-x0-4:-4].values
+                recentx = np.arange(len(recenty))
+                z = np.polyfit(recentx, recenty, 1)
+                if z[0] < 0:
+                    z[0] = 0
+                p = np.poly1d(z)
+                pop = eu_usa_pops[statenations[i]] * 1e6
+                perc70 = (pop * 0.7) - total_minus4
+                perc90 = (pop * 0.9) - total_minus4
+                x = np.arange(x0, x0+1095)
+                emp = p(x)
+                # Biden has stated a goal of 5 million doses a day. Let's say
+                # this equates to 2.1 million people fully vaccinated a day.
+                emp = np.where(emp > 2.1e6, 2.1e6, emp)
+                cumul = np.cumsum(emp)
+                ndays70 = int(np.where(cumul > perc70)[0][0]) 
+                ndays90 = int(np.where(cumul > perc90)[0][0])
+                perc70date = dailydata.index[-4] + datetime.timedelta(days=ndays70)
+                perc90date = dailydata.index[-4] + datetime.timedelta(days=ndays90)
+            else:
+                ax.set_xlim(datetime.date(2020, 2, 21), dailydata.index[-1]+datetime.timedelta(days=7))
+            # Get the maximum number of intervals/10,000s of cases so far
+            ndays_thresh = {"days": 15, "d": 6, "num": 3}
+            num_thresh = {"len1": {"long": 10, "tiny": 7}, "len2": {"long": 14, "tiny": 11},
+                          "len3": {"long": 14, "tiny": 11},  
+                          "extreme": {"fontsmall": 6, "fontxsmall": 5, "xoff_2": -1, "xoff": -6}}
+            interval0 = 100
+            interval0_lbl = "100"
+            if deaths is True:
+                interval = 40000
+                unit = 1000
+                vline_lbl = "k"
+                vline_lbl_tiny = "k"
+            elif vax is True:
+                interval = 10000000
+                unit = 1000000
+                vline_lbl = " million"
+                vline_lbl_tiny = " mil"
+                ndays_thresh = {"days": 5, "d": 4, "num": 3}
+                num_thresh = {"len1": {"long": 7, "tiny": 4}, "len2": {"long": 7, "tiny": 4},
+                              "len3": {"long": 7, "tiny": 4}, 
                               "extreme": {"fontsmall": 6, "fontxsmall": 5, "xoff_2": -1, "xoff": -6}}
-                interval0 = 100
-                interval0_lbl = "100"
-                if lbl == "deaths":
-                    interval = 40000
-                    unit = 1000
-                    vline_lbl = "k"
-                    vline_lbl_tiny = "k"
-                elif lbl == "vax":
-                    interval = 10000000
-                    unit = 1000000
-                    vline_lbl = " million"
-                    vline_lbl_tiny = " mil"
-                    ndays_thresh = {"days": 5, "d": 4, "num": 3}
-                    num_thresh = {"len1": {"long": 7, "tiny": 4}, "len2": {"long": 7, "tiny": 4},
-                                  "len3": {"long": 7, "tiny": 4}, 
-                                  "extreme": {"fontsmall": 6, "fontxsmall": 5, "xoff_2": -1, "xoff": -6}}
-                    interval0 = 1e6
-                    interval0_lbl = "1 million"
-                else:
-                    interval = 1000000
-                    unit = 1000000
-                    vline_lbl = " mil"
-                    vline_lbl_tiny = "m"
-                if vax is True:
-                    maxinterval = fullydata[statenations[i]][-1] - fullydata[statenations[i]][-1] % interval
-                else:
-                    maxinterval = data[statenations[i]][-1] - data[statenations[i]][-1] % interval
-                intervals = np.concatenate((np.array([interval0]),
-                                            np.arange(interval, maxinterval+interval, interval)))
-                # The indices for the next entry after each interval unit
-                if vax is True:
-                    intervals_inds = [np.argmax(fullydata[statenations[i]] > x) for x in intervals]
-                else:
-                    intervals_inds = [np.argmax(data[statenations[i]] > x) for x in intervals]
-                # Vertical lines will be put at interval0 cases and each million afterward
-                # The last index is for marking the last date, but no vline
-                vline_inds = intervals_inds + [len(dailydata)-1]
-                ndays = np.array(vline_inds)[1:] - np.array(vline_inds)[:-1]
-                # Get the transformation function the data coordinates in X and
-                # axis fraction in Y
-                trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
-                # Make one continuous line from interval0 cases to last date
-                ax.plot([dailydata.index[[intervals_inds[0]]], dailydata.index[[vline_inds[-1]]]],
-                        [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
-                        clip_on=False)
-                skip = False
-                for j in range(len(vline_inds)):
-                    # If on the last index (last entry in dataset), we don't plot the vline
-                    # or little | symbol
-                    if j == len(vline_inds)-1:
-                        continue
-                    
-                    ant_kwargs = {"size": 8, "color": OUTSIDE_PLOT_C, "va": "center", "ha": "center",
-                                  "xycoords": ("data", "axes fraction")}
-                    # This makes the | symbol at the end of each time segment
-                    ax.annotate("|", xy=(dailydata.index[[vline_inds[j]]], 1.03), 
-                                **ant_kwargs)
-                    
-                    # Annotate how many days elapsed since last integer million cases
-                    # Extra annotation at the end for last integer million -> now
-                    # Depending on number of days in the interval, the time unit
-                    # will be days, d, no unit at all, or no number at all
-                    middle_i = vline_inds[j] + int(ndays[j]/2)
-                    if ndays[j] > ndays_thresh["days"]: 
-                        elapsed_lbl = f"{ndays[j]} days"
-                    elif ndays[j] >= ndays_thresh["d"]:
-                        elapsed_lbl = f"{ndays[j]}d"
-                    elif ndays[j] >= ndays_thresh["num"]:
-                        elapsed_lbl = f"{ndays[j]}"
-                    else:
-                        elapsed_lbl = ""
-                    ax.annotate(elapsed_lbl, (dailydata.index[[middle_i]], 1.05), 
-                        xycoords= ("data", "axes fraction"), ha="center", 
-                        color=OUTSIDE_PLOT_C, style="italic")
-                    
-                    # Make a vertical line in the plot.
-                    # Annotate how many cases/deaths occurred in the interval period.
-                    ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, 
-                               ls="dotted", 
-                               alpha=0.7, zorder=0)
-                   
-                    # Make the label for the vline (e.g. 8 mil or 200k)
-                    # Depending on the number of days in the interval, the unit
-                    # label may change
-                    number = f"{intervals[j]/unit:.0f}"
-                    ant_kwargs = {}
-                    time_off = 6
-                    if skip == True:
-                        lab = ""
-                        skip = False
-                    lenkey = f"len{len(number)}"
-                    if j == len(vline_inds)-2:
-                        lab = f"{number}{vline_lbl_tiny}"
-                    elif ndays[j] > num_thresh[lenkey]["long"]: 
-                        lab = f"{number}{vline_lbl}"
-                    elif ndays[j] > num_thresh[lenkey]["tiny"]:
-                        lab = f"{number}{vline_lbl_tiny}"
-                    else:
-                        lab = f"{number}"
-                        if ndays[j] < num_thresh["extreme"]["fontxsmall"]:
-                            ant_kwargs = {"size": 8}
-                        elif ndays[j] < num_thresh["extreme"]["fontsmall"]:
-                            ant_kwargs = {"size": 8.5}
-                        if number[0] == "2":
-                            time_off = num_thresh["extreme"]["xoff_2"]
-                        else:
-                            time_off = num_thresh["extreme"]["xoff"]
-
-                    if j == 0:
-                        lab = f"{interval0_lbl}"
-                    ax.annotate(lab, 
-                                (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=time_off), .93),
-                                xycoords=("data", "axes fraction"), 
-                                style="italic", color=VLINE_C, **ant_kwargs)
+                interval0 = 1e6
+                interval0_lbl = "1 million"
+            else:
+                interval = 1000000
+                unit = 1000000
+                vline_lbl = " mil"
+                vline_lbl_tiny = "m"
+            if vax is True:
+                maxinterval = data[statenations[i]][-1] - data[statenations[i]][-1] % interval
+            else:
+                maxinterval = data[statenations[i]][-1] - data[statenations[i]][-1] % interval
+            intervals = np.concatenate((np.array([interval0]),
+                                        np.arange(interval, maxinterval+interval, interval)))
+            # The indices for the next entry after each interval unit
+            if vax is True:
+                intervals_inds = [np.argmax(data[statenations[i]] > x) for x in intervals]
+            else:
+                intervals_inds = [np.argmax(data[statenations[i]] > x) for x in intervals]
+            # Vertical lines will be put at interval0 cases and each million afterward
+            # The last index is for marking the last date, but no vline
+            vline_inds = intervals_inds + [len(dailydata)-1]
+            ndays = np.array(vline_inds)[1:] - np.array(vline_inds)[:-1]
+            # Get the transformation function the data coordinates in X and
+            # axis fraction in Y
+            trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
+            # Make one continuous line from interval0 cases to last date
+            ax.plot([dailydata.index[[intervals_inds[0]]], dailydata.index[[vline_inds[-1]]]],
+                    [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
+                    clip_on=False)
+            skip = False
+            for j in range(len(vline_inds)):
+                # If on the last index (last entry in dataset), we don't plot the vline
+                # or little | symbol
+                if j == len(vline_inds)-1:
+                    continue
                 
+                ant_kwargs = {"size": 8, "color": OUTSIDE_PLOT_C, "va": "center", "ha": "center",
+                              "xycoords": ("data", "axes fraction")}
+                # This makes the | symbol at the end of each time segment
+                ax.annotate("|", xy=(dailydata.index[[vline_inds[j]]], 1.03), 
+                            **ant_kwargs)
+                
+                # Annotate how many days elapsed since last integer million cases
+                # Extra annotation at the end for last integer million -> now
+                # Depending on number of days in the interval, the time unit
+                # will be days, d, no unit at all, or no number at all
+                middle_i = vline_inds[j] + int(ndays[j]/2)
+                if ndays[j] > ndays_thresh["days"]: 
+                    elapsed_lbl = f"{ndays[j]} days"
+                elif ndays[j] >= ndays_thresh["d"]:
+                    elapsed_lbl = f"{ndays[j]}d"
+                elif ndays[j] >= ndays_thresh["num"]:
+                    elapsed_lbl = f"{ndays[j]}"
+                else:
+                    elapsed_lbl = ""
+                ax.annotate(elapsed_lbl, (dailydata.index[[middle_i]], 1.05), 
+                    xycoords= ("data", "axes fraction"), ha="center", 
+                    color=OUTSIDE_PLOT_C, style="italic")
+                
+                # Make a vertical line in the plot.
+                # Annotate how many cases/deaths occurred in the interval period.
+                ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, 
+                           ls="dotted", 
+                           alpha=0.7, zorder=0)
+               
+                # Make the label for the vline (e.g. 8 mil or 200k)
+                # Depending on the number of days in the interval, the unit
+                # label may change
+                number = f"{intervals[j]/unit:.0f}"
+                ant_kwargs = {}
+                time_off = 6
+                if skip == True:
+                    lab = ""
+                    skip = False
+                lenkey = f"len{len(number)}"
+                if j == len(vline_inds)-2:
+                    lab = f"{number}{vline_lbl_tiny}"
+                elif ndays[j] > num_thresh[lenkey]["long"]: 
+                    lab = f"{number}{vline_lbl}"
+                elif ndays[j] > num_thresh[lenkey]["tiny"]:
+                    lab = f"{number}{vline_lbl_tiny}"
+                else:
+                    lab = f"{number}"
+                    if ndays[j] < num_thresh["extreme"]["fontxsmall"]:
+                        ant_kwargs = {"size": 8}
+                    elif ndays[j] < num_thresh["extreme"]["fontsmall"]:
+                        ant_kwargs = {"size": 8.5}
+                    if number[0] == "2":
+                        time_off = num_thresh["extreme"]["xoff_2"]
+                    else:
+                        time_off = num_thresh["extreme"]["xoff"]
+
+                if j == 0:
+                    lab = f"{interval0_lbl}"
+                ax.annotate(lab, 
+                            (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=time_off), .93),
+                            xycoords=("data", "axes fraction"), 
+                            style="italic", color=VLINE_C, **ant_kwargs)
             
-                # Define axis fraction coords for the Total and Last annotations
-                # and the box surrounding them
-                text_x0 = 0.027
-                text_x1 = [0]
-                text_y0 = 0.84
-                bbox = rainbow_text(text_x0, text_y0, [f"Total: {total:,}"], ["black"], ax=ax, fig=fig, 
-                                    tstring="axes", size=fontsize, styles="italic", ha="left",
-                                    va="center", zorder=20)
+        
+            # Define axis fraction coords for the Total and Last annotations
+            # and the box surrounding them
+            text_x0 = 0.027
+            text_x1 = [0]
+            text_y0 = 0.84
+            bbox = rainbow_text(text_x0, text_y0, [f"Total: {total:,}"], ["black"], ax=ax, fig=fig, 
+                                tstring="axes", size=fontsize, styles="italic", ha="left",
+                                va="center", zorder=20)
+            text_x1.append(bbox.x1)
+            text_y1 = 0.75
+            words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
+            colors = ["black", LAST_C, "black", CONTRAST_C]
+            weights = ["normal", "normal", "normal", "bold"]
+            bbox = rainbow_text(text_x0, text_y1, words, colors, ax=ax, fig=fig, 
+                                tstring="axes", weights=weights, styles="italic", 
+                                size=fontsize, ha="left", va="center", zorder=20)
+            text_x1.append(bbox.x1)
+            max_x = max(text_x1)
+            box = Rectangle((text_x0-0.003, text_y1-0.03), (max_x-text_x0)+0.006, .08*2, 
+                transform=ax.transAxes, edgecolor=BOX_EDGE_C, facecolor=BOX_FACE_C, alpha=0.5, zorder=20)
+            ax.add_patch(box)
+        
+            
+            if vax is True:
+                words70 = ['70%: ', f'{perc70date:%b %d %Y}'] 
+                words90 = [ '90%: ', f'{perc90date:%b %d %Y}']
+                colors = ['black', 'black']
+                weights = ['normal', 'normal']
+                text_y2 = 0.66
+                bbox = rainbow_text(text_x0, text_y2, words70, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, styles='italic', ha='left', va='center', zorder=20)
                 text_x1.append(bbox.x1)
-                text_y1 = 0.75
-                words = ["Last: ", f"{lastval:,}", "/", f"{avglastval:,}"]
-                colors = ["black", LAST_C, "black", CONTRAST_C]
-                weights = ["normal", "normal", "normal", "bold"]
-                bbox = rainbow_text(text_x0, text_y1, words, colors, ax=ax, fig=fig, 
-                                    tstring="axes", weights=weights, styles="italic", 
-                                    size=fontsize, ha="left", va="center", zorder=20)
+                text_y3 = 0.57
+                bbox = rainbow_text(text_x0, text_y3, words90, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, styles='italic', ha='left', va='center', zorder=20)
                 text_x1.append(bbox.x1)
                 max_x = max(text_x1)
-                box = Rectangle((text_x0-0.003, text_y1-0.03), (max_x-text_x0)+0.006, .08*2, 
+                box = Rectangle((text_x0-0.003, text_y3-0.03), (max_x-text_x0)+0.006, .08*2, 
                     transform=ax.transAxes, edgecolor=BOX_EDGE_C, facecolor=BOX_FACE_C, alpha=0.5, zorder=20)
                 ax.add_patch(box)
-            
-                
-                if vax is True:
-                    words70 = ['70%: ', f'{perc70date:%b %d %Y}'] 
-                    words90 = [ '90%: ', f'{perc90date:%b %d %Y}']
-                    colors = ['black', 'black']
-                    weights = ['normal', 'normal']
-                    text_y2 = 0.66
-                    bbox = rainbow_text(text_x0, text_y2, words70, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, styles='italic', ha='left', va='center', zorder=20)
-                    text_x1.append(bbox.x1)
-                    text_y3 = 0.57
-                    bbox = rainbow_text(text_x0, text_y3, words90, colors, weights=weights, ax=ax, fig=fig, tstring="axes", size=fontsize, styles='italic', ha='left', va='center', zorder=20)
-                    text_x1.append(bbox.x1)
-                    max_x = max(text_x1)
-                    box = Rectangle((text_x0-0.003, text_y3-0.03), (max_x-text_x0)+0.006, .08*2, 
-                        transform=ax.transAxes, edgecolor=BOX_EDGE_C, facecolor=BOX_FACE_C, alpha=0.5, zorder=20)
-                    ax.add_patch(box)
 
-                # Define US and EU population (in units of intervals) by hand
-                # and write a title
-                if vax is True:
-                    vaccinated = round((total / (eu_usa_pops[statenations[i]] * 1e6)) * 100.)
-                    lab = f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million ({vaccinated}% vaccinated)"
-                elif deaths is False:
-                    infected = round((total / (eu_usa_pops[statenations[i]] * 1e6)) * 100.)
-                    lab = f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million ({infected}% infected)"
-                else:
-                    lab = f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million ({mort[statenations[i]]}% mortality)"
-                ax.set_title(lab, loc="left", pad=27, fontsize=fontsize)
+            # Define US and EU population (in units of intervals) by hand
+            # and write a title
+            if vax is True:
+                vaccinated = round((total / (eu_usa_pops[statenations[i]] * 1e6)) * 100.)
+                lab = f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million ({vaccinated}% vaccinated)"
+            elif deaths is False:
+                infected = round((total / (eu_usa_pops[statenations[i]] * 1e6)) * 100.)
+                lab = f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million ({infected}% infected)"
+            else:
+                lab = f"$\\bf{statenations[i]}$, population: {eu_usa_pops[statenations[i]]:,} million ({mort[statenations[i]]}% mortality)"
+            ax.set_title(lab, loc="left", pad=27, fontsize=fontsize)
   
 
    
@@ -591,7 +579,13 @@ if __name__ == "__main__":
                         help="Switch to plot deaths instead of cases")
     parser.add_argument("-v", "--vax", action="store_true",
                         default=False,
-                        help="Switch to plot vaccination rates")
+                        help="Switch to plot full vaccination rates")
+    parser.add_argument("--dose", action="store_true",
+                        default=False,
+                        help="Switch to plot 1-dose vaccination rates")
+    parser.add_argument("--all", action="store_true",
+                        default=False,
+                        help="Switch to make all types of plots")
     parser.add_argument('--regions', nargs='+')
     args = parser.parse_args()
     
@@ -607,7 +601,7 @@ if __name__ == "__main__":
                 print(f"Region {item} not recognized\nAllowed values: {allowed_regions}")
 
     for item in regions:
-        if args.vax is True:
+        if args.vax is True or args.dose is True:
             data, pops = get_data.get_data(item, vax=True)
         else:
             data, pops = get_data.get_data(item, deaths=args.deaths)
@@ -616,6 +610,6 @@ if __name__ == "__main__":
             usa_mort = mortality_rate("US", data, data2)
             eu_mort = mortality_rate("EU", data, data2)
             mort = {"US": usa_mort, "EU": eu_mort}
-            grid_plot(data, pops, item, deaths=args.deaths, mort=mort, vax=args.vax)
+            grid_plot(data, pops, item, deaths=args.deaths, mort=mort, fully=args.vax, onedose=args.dose)
         else:
-            grid_plot(data, pops, item, deaths=args.deaths, vax=args.vax)
+            grid_plot(data, pops, item, deaths=args.deaths, fully=args.vax, onedose=args.dose)
