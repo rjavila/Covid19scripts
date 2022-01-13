@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.transforms as transforms
 from matplotlib.patches import Rectangle
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 import pandas as pd
 import sys
 import argparse
@@ -63,7 +64,7 @@ LATIN_COUNTRIES = ['Argentina','Belize','Bolivia','Brazil','Chile','Colombia',
 # https://matplotlib.org/3.1.0/gallery/text_labels_and_annotations/rainbow_text.html
 def rainbow_text(x, y, strings, colors, styles=None, weights=None,
                  orientation='horizontal', ax=None, fig=None, 
-                 tstring="axes", **kwargs):
+                 t=None, tstring="axes", returnt=False, **kwargs):
     """
     Take a list of *strings* and *colors* and place them next to each
     other, with text strings[i] being shown in colors[i].
@@ -91,21 +92,22 @@ def rainbow_text(x, y, strings, colors, styles=None, weights=None,
     if ax is None:
         ax = plt.gca()
 
-    tstring = tstring.lower()
-    if tstring == "axes":
-        t = ax.transAxes
-    elif tstring == "data":
-        t = ax.transData
-    elif tstring == "figure":
-        t = fig.transFigure
-    elif tstring == "display":
-        t = None
-    elif tstring == "xaxis":
-        t = ax.get_xaxis_transform()
-    elif tstring == "yaxis":
-        t = ax.get_yaxis_transform()
-    else:
-        t = None
+    if t is None:
+        tstring = tstring.lower()
+        if tstring == "axes":
+            t = ax.transAxes
+        elif tstring == "data":
+            t = ax.transData
+        elif tstring == "figure":
+            t = fig.transFigure
+        elif tstring == "display":
+            t = None
+        elif tstring == "xaxis":
+            t = ax.get_xaxis_transform()
+        elif tstring == "yaxis":
+            t = ax.get_yaxis_transform()
+        else:
+            t = None
 
     if styles == None:
         styles = "normal"
@@ -135,7 +137,10 @@ def rainbow_text(x, y, strings, colors, styles=None, weights=None,
             x = bbox.x1
         else:
             y = bbox.y1
-    return bbox
+    if returnt is True:
+        return bbox, text
+    else:
+        return bbox
 
 def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots", 
               deaths=False, *args, **kwargs):
@@ -174,7 +179,6 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
         BOX_FACE_C = "lightgrey"
         LAST_C = "lightcoral"
 
-    months = mdates.MonthLocator()
     
     if not os.path.exists(outdir):
         os.mkdir(outdir)
@@ -284,16 +288,28 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
         lastval = int(dailydata[statenations[i]][-1])
         avglastval = int(avg[statenations[i]][-1])
         
-        plt.gcf().autofmt_xdate(rotation=45, ha="center")
-        
-        ax.tick_params('both', labelsize=labelsize, length=3)
+        ax.tick_params(axis="y", which='major', labelsize=labelsize, length=3)
         ax.get_yaxis().set_major_formatter(
             matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
         ax.yaxis.set_ticks_position('both')
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-        ax.xaxis.set_major_locator(months)
         ax.yaxis.get_major_ticks()[0].label1.set_visible(False)
         ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+        
+        ax.tick_params(axis="x", which='minor', labelsize=labelsize, length=3)
+        months = mdates.MonthLocator()
+        years = mdates.YearLocator()
+        ax.xaxis.set_major_locator(years)
+        ax.xaxis.set_minor_locator(months)
+        ax.tick_params(axis='x', which="minor", rotation=45)
+        ax.xaxis.set_minor_formatter(mdates.DateFormatter('%b'))
+        if region != "eu_vs_usa": 
+            ax.xaxis.set_minor_locator(plt.MaxNLocator(10))
+            ax.tick_params(axis="x", which='major', length=0)
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('\n\n%Y'))
+#        ax.xaxis.set_minor_locator(AutoMinorLocator(6))
+        else:
+            ax.tick_params(axis='x', which="major", rotation=45, length=3)
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b\n%Y'))
         
         if region != "eu_vs_usa":
             max_avg = np.nanmax(avg[statenations[i]])
@@ -356,12 +372,13 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
             interval0 = 100
             interval0_lbl = "100"
             if deaths is True:
-                interval = 40000
+                interval = 100000
                 unit = 1000
                 vline_lbl = "k"
                 vline_lbl_tiny = "k"
+                vline_labels = ["k", "k", "k", ""]
             elif vax is True:
-                interval = 10000000
+                interval = 50000000
                 unit = 1000000
                 vline_lbl = " million"
                 vline_lbl_tiny = " mil"
@@ -371,11 +388,13 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
                               "extreme": {"fontsmall": 6, "fontxsmall": 5, "xoff_2": -1, "xoff": -6}}
                 interval0 = 1e6
                 interval0_lbl = "1 million"
-            else:
-                interval = 1000000
+                vline_labels = ["million", "mil", "m", ""]
+            else: # Cases
+                interval = 5000000
                 unit = 1000000
                 vline_lbl = " mil"
                 vline_lbl_tiny = "m"
+                vline_labels = ["million", "mil", "m", ""]
             if vax is True:
                 maxinterval = data[statenations[i]][-1] - data[statenations[i]][-1] % interval
             else:
@@ -399,6 +418,7 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
                     [1.03, 1.03], transform=trans, color=OUTSIDE_PLOT_C, lw=.9,  
                     clip_on=False)
             skip = False
+            prev_x1 = 0
             for j in range(len(vline_inds)):
                 # If on the last index (last entry in dataset), we don't plot the vline
                 # or little | symbol
@@ -461,13 +481,45 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
                     else:
                         time_off = num_thresh["extreme"]["xoff"]
 
+                # The first label is special
                 if j == 0:
                     lab = f"{interval0_lbl}"
-                ax.annotate(lab, 
+                    ax.annotate(lab, 
                             (dailydata.index[[vline_inds[j]]]+datetime.timedelta(hours=time_off), .93),
                             xycoords=("data", "axes fraction"), 
                             style="italic", color=VLINE_C, **ant_kwargs)
-            
+                    continue
+
+                toobig = True
+                label_i = 0
+                while toobig is True:
+                    if j == len(vline_inds)-2:
+                        lbl = f"{number}{vline_labels[-2]}"
+                    if label_i == len(vline_labels):
+                        lbl = ""
+                    else:
+                        lbl = f"{number}{vline_labels[label_i]}"
+                    current_x0 = dailydata.index[[vline_inds[j]]] + datetime.timedelta(hours=time_off)
+                    current_y0 = 0.93
+                    bbox,t = rainbow_text(current_x0, current_y0, [lbl], colors=[VLINE_C], 
+                                        weights=["normal"], styles="italic",
+                                        t=trans, zorder=100, returnt=True, **ant_kwargs)
+                    current_x1 = bbox.x1
+                    if j == len(vline_inds)-2:
+                        break
+                    next_x0_pd = dailydata.index[[vline_inds[j+1]]] + datetime.timedelta(hours=time_off)
+                    next_x0_dt = next_x0_pd.to_pydatetime()
+                    next_x0 = next_x0_dt.astype('datetime64[D]').astype(int)[0]
+#                    print(next_x0_dt[0], current_x1, next_x0, j, len(vline_inds), label_i, len(vline_labels), lbl, label_i)
+                    buffr = 5
+                    if (current_x1+buffr) > (next_x0):
+                        t.remove()
+                    else:
+                        toobig = False
+                    if label_i == len(vline_labels):
+                        toobig = False
+                    label_i += 1
+
         
             # Define axis fraction coords for the Total and Last annotations
             # and the box surrounding them
@@ -524,10 +576,11 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
    
     if region == "eu_vs_usa": 
         # Set both US and EU ylim maximum to the same value 
-        us_ymax = axes[0].get_ylim()[1]
-        eu_ymax = axes[1].get_ylim()[1]
+        us_ymax = np.nanmax(avg[statenations[0]])
+        eu_ymax = np.nanmax(avg[statenations[1]])
         max_max = max(us_ymax, eu_ymax)
-        max_max_buffer = max_max + (0.05 * max_max)
+        max_max_buffer = max_max + (0.1 * max_max)
+        # This buffer ensures that the max will not go over the vline text
         axes[0].set_ylim(0, max_max_buffer)
         axes[1].set_ylim(0, max_max_buffer)
 
