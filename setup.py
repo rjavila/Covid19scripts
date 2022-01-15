@@ -6,6 +6,6 @@ setup(
     description = "Plot the demise of the USA",
     packages = find_packages(),
     install_requires = ["pandas",
-                        "python3-wget",
+                        "requests",
                         "bokeh>=2.3"]
     )

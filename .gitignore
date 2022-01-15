@@ -3,3 +3,4 @@
 covidplots/covid_data/
 covidplots/plots/
 *.egg-info/
+*build/
