@@ -1,5 +1,5 @@
 import pandas as pd
-import wget
+import requests
 import os
 import time
 
@@ -38,8 +38,12 @@ def download_vaccine_data(region, url=OWID_URL, outdir="covid_data"):
         else:
             os.remove(outfilename)
 
-    wget.download(os.path.join(url, filename), outfilename)
-    print(f"\n ⬇️  Downloaded {outfilename}")
+    download = requests.get(os.path.join(url,filename))
+
+    with open(outfilename,'w') as f1:
+        f1.write(download.content.decode())
+
+    print(f" ⬇️  Downloaded {outfilename}")
 
     return outfilename
 
@@ -80,8 +84,12 @@ def download_data(region, deaths=False, url=JHU_URL, outdir="covid_data"):
         else:
             os.remove(outfilename)
 
-    wget.download(os.path.join(url, filename), outfilename)
-    print(f"\n ⬇️  Downloaded {outfilename}")
+    download = requests.get(os.path.join(url,filename))
+
+    with open(outfilename,'w') as f1:
+        f1.write(download.content.decode())
+
+    print(f" ⬇️  Downloaded {outfilename}")
 
     return outfilename
 
