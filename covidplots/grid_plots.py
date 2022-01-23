@@ -84,7 +84,7 @@ def rainbow_text(x, y, strings, colors, styles=None, weights=None,
     orientation : {'horizontal', 'vertical'}
     ax : Axes, optional
         The Axes to draw into. If None, the current axes will be used.
-	t : transform to use for text coordinates
+    t : transform to use for text coordinates
     **kwargs
         All other keyword arguments are passed to plt.text(), so you can
         set the font size, family, etc.
@@ -431,23 +431,6 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
                 ax.annotate("|", xy=(dailydata.index[[vline_inds[j]]], 1.03), 
                             **ant_kwargs)
                 
-                # Annotate how many days elapsed since last integer million cases
-                # Extra annotation at the end for last integer million -> now
-                # Depending on number of days in the interval, the time unit
-                # will be days, d, no unit at all, or no number at all
-                middle_i = vline_inds[j] + int(ndays[j]/2)
-                if ndays[j] > ndays_thresh["days"]: 
-                    elapsed_lbl = f"{ndays[j]} days"
-                elif ndays[j] >= ndays_thresh["d"]:
-                    elapsed_lbl = f"{ndays[j]}d"
-                elif ndays[j] >= ndays_thresh["num"]:
-                    elapsed_lbl = f"{ndays[j]}"
-                else:
-                    elapsed_lbl = ""
-                ax.annotate(elapsed_lbl, (dailydata.index[[middle_i]], 1.05), 
-                    xycoords= ("data", "axes fraction"), ha="center", 
-                    color=OUTSIDE_PLOT_C, style="italic")
-                
                 # Make a vertical line in the plot.
                 # Annotate how many cases/deaths occurred in the interval period.
                 ax.axvline(dailydata.index[[vline_inds[j]]], color=VLINE_C, 
@@ -459,27 +442,27 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
                 # label may change
                 number = f"{intervals[j]/unit:.0f}"
                 ant_kwargs = {}
-                time_off = 6
-                if skip == True:
-                    lab = ""
-                    skip = False
-                lenkey = f"len{len(number)}"
-                if j == len(vline_inds)-2:
-                    lab = f"{number}{vline_lbl_tiny}"
-                elif ndays[j] > num_thresh[lenkey]["long"]: 
-                    lab = f"{number}{vline_lbl}"
-                elif ndays[j] > num_thresh[lenkey]["tiny"]:
-                    lab = f"{number}{vline_lbl_tiny}"
-                else:
-                    lab = f"{number}"
-                    if ndays[j] < num_thresh["extreme"]["fontxsmall"]:
-                        ant_kwargs = {"size": 8}
-                    elif ndays[j] < num_thresh["extreme"]["fontsmall"]:
-                        ant_kwargs = {"size": 8.5}
-                    if number[0] == "2":
-                        time_off = num_thresh["extreme"]["xoff_2"]
-                    else:
-                        time_off = num_thresh["extreme"]["xoff"]
+                time_off = 12
+#                if skip == True:
+#                    lab = ""
+#                    skip = False
+#                lenkey = f"len{len(number)}"
+#                if j == len(vline_inds)-2:
+#                    lab = f"{number}{vline_lbl_tiny}"
+#                elif ndays[j] > num_thresh[lenkey]["long"]: 
+#                    lab = f"{number}{vline_lbl}"
+#                elif ndays[j] > num_thresh[lenkey]["tiny"]:
+#                    lab = f"{number}{vline_lbl_tiny}"
+#                else:
+#                    lab = f"{number}"
+#                    if ndays[j] < num_thresh["extreme"]["fontxsmall"]:
+#                        ant_kwargs = {"size": 8}
+#                    elif ndays[j] < num_thresh["extreme"]["fontsmall"]:
+#                        ant_kwargs = {"size": 8.5}
+#                    if number[0] == "2":
+#                        time_off = num_thresh["extreme"]["xoff_2"]
+#                    else:
+#                        time_off = num_thresh["extreme"]["xoff"]
 
                 # The first label is special
                 if j == 0:
@@ -490,6 +473,7 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
                             style="italic", color=VLINE_C, **ant_kwargs)
                     continue
 
+                # This is for the case/death/vax numbers.
                 toobig = True
                 label_i = 0
                 while toobig is True:
@@ -520,6 +504,45 @@ def grid_plot(data, pops, region, fully=False, onedose=False, outdir="plots",
                         toobig = False
                     label_i += 1
 
+                # Annotate how many days elapsed since last interval cases
+                # Extra annotation at the end for last interval -> now
+                # Depending on number of days in the interval, the time unit
+                # will be days, d, no unit at all, or no number at all
+                elapsed_labels = [" days", "days", "d", ""]
+                middle_i = vline_inds[j] + int(ndays[j]/2)
+                toobig = True
+                label_i = 0
+                while toobig is True:
+                    current_x0 = dailydata.index[[middle_i]]
+                    lbl_kwargs = {"ha": "center"}
+                    # Last label
+                    if j >= len(vline_inds)-2:
+                        lbl = f"{ndays[j]}{elapsed_labels[-2]}"
+                        current_x0 = dailydata.index[[vline_inds[j]]] + datetime.timedelta(hours=time_off)
+                        lbl_kwargs = {"ha": "left"}
+                    if label_i == len(elapsed_labels):
+                        lbl = ""
+                    else:
+                        lbl = f"{ndays[j]}{elapsed_labels[label_i]}"
+                    bbox,t = rainbow_text(current_x0, 1.05, [lbl],
+                                        colors=[OUTSIDE_PLOT_C], weights=["normal"],
+                                        styles="italic", t=trans, returnt=True, **lbl_kwargs)
+                    current_x1 = bbox.x1
+                    if j == len(vline_inds)-2:
+                        break
+                    next_x0_pd = dailydata.index[[vline_inds[j+1]]]
+                    next_x0_dt = next_x0_pd.to_pydatetime()
+                    next_x0 = next_x0_dt.astype('datetime64[D]').astype(int)[0]
+                    #print(next_x0_dt[0], current_x1, next_x0, j, len(vline_inds), label_i, len(elapsed_labels), lbl)
+                    buffr = 2 
+                    if (current_x1+buffr) > (next_x0):
+                        t.remove()
+                    else:
+                        toobig = False
+                    if label_i == len(elapsed_labels):
+                        toobig = False
+                    label_i += 1
+        
         
             # Define axis fraction coords for the Total and Last annotations
             # and the box surrounding them
