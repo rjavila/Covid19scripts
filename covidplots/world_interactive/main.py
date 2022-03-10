@@ -54,7 +54,7 @@ for deaths in [False, True]:
     data, pops = get_data.get_data("world", deaths=deaths)
     data = data.diff()
     # Use 7 day average as the defacto data
-    data = data.rolling(7, center=True, min_periods=2).mean()
+    data = data.rolling(7, center=False, min_periods=2).mean()
     
     # Calculate per capita values
     data_capita = capita * data.div(pops.iloc[0], axis="columns")
