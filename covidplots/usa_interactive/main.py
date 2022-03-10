@@ -78,7 +78,7 @@ for dtype in dtype_kwargs:
         pops = pops[STATES]
         data = data.diff()
         # Use 7 day average as the defacto data
-        data = data.rolling(7, center=True, min_periods=2).mean()
+        data = data.rolling(7, center=False, min_periods=2).mean()
     
     data_d[dtype] = {"data": data}
     # Sort and determine worst and best 9 states, both raw and per capita
